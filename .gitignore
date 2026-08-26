@@ -1,0 +1,29 @@
+# Secrets — never commit these
+*.env
+.env.*
+*_key.txt
+*_secret.txt
+secrets/
+service-account*.json
+oauth_client.json
+
+# Personal audio/transcripts — this repo is public, session data is not
+*.m4a
+*.mp3
+*.wav
+*.webm
+recordings/
+transcripts/
+transcript_api_resp/
+
+# Python (for when backend code lands here)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
