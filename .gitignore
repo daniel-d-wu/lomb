@@ -1,12 +1,31 @@
-__pycache__/
-*.pyc
-
-# Secrets -- never commit real API keys/tokens. If a real key ever ends up
-# in this directory (e.g. copied in from the project's assemblyai_key.txt
-# doc), name it one of these so it's excluded automatically rather than
-# relying on remembering not to `git add` it.
+# Secrets -- never commit real API keys/tokens
 *.env
 .env.*
 *_key.txt
+*_secret.txt
 *_token.txt
+secrets/
 secrets.*
+service-account*.json
+oauth_client.json
+
+# Personal audio/transcripts -- this repo is public, session data is not
+*.m4a
+*.mp3
+*.wav
+*.webm
+recordings/
+transcripts/
+transcript_api_resp/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
