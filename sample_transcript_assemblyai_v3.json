@@ -1,0 +1,3038 @@
+{
+  "_NOTE": "CONSTRUCTED sample v3, not a real AssemblyAI API response -- no audio file exists behind it. Same base as sample_transcript_assemblyai_v2.json (JSON shape verified against AssemblyAI's real API reference; speaker A's sentence content is real, pulled from dan_error_analysis_master_v3.md and claude/all_grammar_errors_master.json; speaker B is invented filler dialogue), PLUS two additions built specifically to exercise FORMULAIC and FILLED_PAUSE now that both are wired into pipeline.py (2026-09-03): 'Ich koche gern verschiedene Sachen.' is REAL -- dan_error_analysis_master_v3.md's own Idio-008 example verbatim, not invented. 'Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.' is INVENTED, not corpus-sourced -- this project's real ASR transcripts do not preserve filler-sound tokens as their own words (see prompts/filled_pause.py's docstring for why FILLED_PAUSE accepts an accuracy ceiling because of exactly this), so there is no real corpus line to pull a filler example from the way there was for FORMULAIC. This sentence exists to exercise the plumbing end to end and, only if run against a real API key outside this sandbox, to see whether the prompt actually flags what it's designed to flag -- it is not evidence about real learner filler-sound frequency. See build_sample_transcript_v3.py's own module docstring for the full reasoning behind both additions.",
+  "id": "sample-transcript-v3-not-a-real-assemblyai-job",
+  "status": "completed",
+  "language_code": "de",
+  "audio_url": "N/A -- synthetic sample, no real audio file behind this",
+  "audio_duration": 88.6,
+  "confidence": 0.93,
+  "text": "Was hast du diese Woche auf Deutsch gemacht? Ich suche schon seit ein paar Monaten nach einem Tandempartner. Ah interessant, erzaehlen Sie mehr. Trotzdem kann ich nicht mit die Leute sprechen. Wieso? Was ist das Problem? Ich koche gern verschiedene Sachen. Oh, was kochst du am liebsten? Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll. Ich sage dir ein Beispiel. Okay, verstehe. Wie viele Tage war ich in die Krankenhaus? Oh nein, warst du krank? Ich lebe in die USA. Und wie war das Gespraech mit dem Partner? und dann kommt letztes Jahr. Wirklich? Was ist passiert? Ich mache ein Urlaub in Hamburg und nach Koeln. Klingt schoen! fruher, als ich Kind war, spiele ich gern Basketball und schwimme. Das ist toll. weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden. Okay, gut. dann wir sehen, wie lange wir auf Deutsch reden. Klingt gut. manchmal gibt es Problem, manchmal es ist ein Vorteil. Verstehe. Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern. Verstehe. Ich freue mich fuer diese Reise, dass ich bald gehe. Das klingt aufregend! Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+  "words": [
+    {
+      "text": "Was",
+      "start": 400,
+      "end": 780,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "hast",
+      "start": 780,
+      "end": 1160,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "du",
+      "start": 1160,
+      "end": 1540,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "diese",
+      "start": 1540,
+      "end": 1920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Woche",
+      "start": 1920,
+      "end": 2300,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "auf",
+      "start": 2300,
+      "end": 2680,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Deutsch",
+      "start": 2680,
+      "end": 3060,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gemacht?",
+      "start": 3060,
+      "end": 3440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 3840,
+      "end": 4220,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "suche",
+      "start": 4220,
+      "end": 4600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "schon",
+      "start": 4600,
+      "end": 4980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "seit",
+      "start": 4980,
+      "end": 5360,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ein",
+      "start": 5360,
+      "end": 5740,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "paar",
+      "start": 5740,
+      "end": 6120,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Monaten",
+      "start": 6120,
+      "end": 6500,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nach",
+      "start": 6500,
+      "end": 6880,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "einem",
+      "start": 6880,
+      "end": 7260,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Tandempartner.",
+      "start": 7260,
+      "end": 7640,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ah",
+      "start": 8040,
+      "end": 8420,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "interessant,",
+      "start": 8420,
+      "end": 8800,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "erzaehlen",
+      "start": 8800,
+      "end": 9180,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Sie",
+      "start": 9180,
+      "end": 9560,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mehr.",
+      "start": 9560,
+      "end": 9940,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Trotzdem",
+      "start": 10340,
+      "end": 10720,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "kann",
+      "start": 10720,
+      "end": 11100,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 11100,
+      "end": 11480,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nicht",
+      "start": 11480,
+      "end": 11860,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mit",
+      "start": 11860,
+      "end": 12240,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "die",
+      "start": 12240,
+      "end": 12620,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Leute",
+      "start": 12620,
+      "end": 13000,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "sprechen.",
+      "start": 13000,
+      "end": 13380,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Wieso?",
+      "start": 13780,
+      "end": 14160,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Was",
+      "start": 14160,
+      "end": 14540,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ist",
+      "start": 14540,
+      "end": 14920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "das",
+      "start": 14920,
+      "end": 15300,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Problem?",
+      "start": 15300,
+      "end": 15680,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 16080,
+      "end": 16460,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "koche",
+      "start": 16460,
+      "end": 16840,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gern",
+      "start": 16840,
+      "end": 17220,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "verschiedene",
+      "start": 17220,
+      "end": 17600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Sachen.",
+      "start": 17600,
+      "end": 17980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Oh,",
+      "start": 18380,
+      "end": 18760,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "was",
+      "start": 18760,
+      "end": 19140,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "kochst",
+      "start": 19140,
+      "end": 19520,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "du",
+      "start": 19520,
+      "end": 19900,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "am",
+      "start": 19900,
+      "end": 20280,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "liebsten?",
+      "start": 20280,
+      "end": 20660,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich,",
+      "start": 21060,
+      "end": 21440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "aeh,",
+      "start": 21440,
+      "end": 21820,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 21820,
+      "end": 22200,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "weiss",
+      "start": 22200,
+      "end": 22580,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nicht",
+      "start": 22580,
+      "end": 22960,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "genau,",
+      "start": 22960,
+      "end": 23340,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "aehm,",
+      "start": 23340,
+      "end": 23720,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wie",
+      "start": 23720,
+      "end": 24100,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 24100,
+      "end": 24480,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "das",
+      "start": 24480,
+      "end": 24860,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "sagen",
+      "start": 24860,
+      "end": 25240,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "soll.",
+      "start": 25240,
+      "end": 25620,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 26020,
+      "end": 26400,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "sage",
+      "start": 26400,
+      "end": 26780,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "dir",
+      "start": 26780,
+      "end": 27160,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ein",
+      "start": 27160,
+      "end": 27540,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Beispiel.",
+      "start": 27540,
+      "end": 27920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Okay,",
+      "start": 28320,
+      "end": 28700,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "verstehe.",
+      "start": 28700,
+      "end": 29080,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Wie",
+      "start": 29480,
+      "end": 29860,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "viele",
+      "start": 29860,
+      "end": 30240,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Tage",
+      "start": 30240,
+      "end": 30620,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "war",
+      "start": 30620,
+      "end": 31000,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 31000,
+      "end": 31380,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "in",
+      "start": 31380,
+      "end": 31760,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "die",
+      "start": 31760,
+      "end": 32140,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Krankenhaus?",
+      "start": 32140,
+      "end": 32520,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Oh",
+      "start": 32920,
+      "end": 33300,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nein,",
+      "start": 33300,
+      "end": 33680,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "warst",
+      "start": 33680,
+      "end": 34060,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "du",
+      "start": 34060,
+      "end": 34440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "krank?",
+      "start": 34440,
+      "end": 34820,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 35220,
+      "end": 35600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "lebe",
+      "start": 35600,
+      "end": 35980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "in",
+      "start": 37780,
+      "end": 38160,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "die",
+      "start": 38160,
+      "end": 38540,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "USA.",
+      "start": 38540,
+      "end": 38920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Und",
+      "start": 39320,
+      "end": 39700,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wie",
+      "start": 39700,
+      "end": 40080,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "war",
+      "start": 40080,
+      "end": 40460,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "das",
+      "start": 40460,
+      "end": 40840,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Gespraech",
+      "start": 40840,
+      "end": 41220,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mit",
+      "start": 41220,
+      "end": 41600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "dem",
+      "start": 41600,
+      "end": 41980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Partner?",
+      "start": 41980,
+      "end": 42360,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "und",
+      "start": 42760,
+      "end": 43140,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "dann",
+      "start": 43140,
+      "end": 43520,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "kommt",
+      "start": 43520,
+      "end": 43900,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "letztes",
+      "start": 43900,
+      "end": 44280,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Jahr.",
+      "start": 44280,
+      "end": 44660,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Wirklich?",
+      "start": 45060,
+      "end": 45440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Was",
+      "start": 45440,
+      "end": 45820,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ist",
+      "start": 45820,
+      "end": 46200,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "passiert?",
+      "start": 46200,
+      "end": 46580,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 46980,
+      "end": 47360,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mache",
+      "start": 47360,
+      "end": 47740,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ein",
+      "start": 47740,
+      "end": 48120,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Urlaub",
+      "start": 48120,
+      "end": 48500,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "in",
+      "start": 48500,
+      "end": 48880,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Hamburg",
+      "start": 48880,
+      "end": 49260,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "und",
+      "start": 49260,
+      "end": 49640,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nach",
+      "start": 49640,
+      "end": 50020,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Koeln.",
+      "start": 50020,
+      "end": 50400,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Klingt",
+      "start": 50800,
+      "end": 51180,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "schoen!",
+      "start": 51180,
+      "end": 51560,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "fruher,",
+      "start": 51960,
+      "end": 52340,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "als",
+      "start": 52340,
+      "end": 52720,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 52720,
+      "end": 53100,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Kind",
+      "start": 53100,
+      "end": 53480,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "war,",
+      "start": 53480,
+      "end": 53860,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "spiele",
+      "start": 53860,
+      "end": 54240,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 54240,
+      "end": 54620,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gern",
+      "start": 54620,
+      "end": 55000,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Basketball",
+      "start": 55000,
+      "end": 55380,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "und",
+      "start": 55380,
+      "end": 55760,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "schwimme.",
+      "start": 55760,
+      "end": 56140,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Das",
+      "start": 56540,
+      "end": 56920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ist",
+      "start": 56920,
+      "end": 57300,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "toll.",
+      "start": 57300,
+      "end": 57680,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "weil",
+      "start": 58080,
+      "end": 58460,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 58460,
+      "end": 58840,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "damals",
+      "start": 58840,
+      "end": 59220,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "kein",
+      "start": 59220,
+      "end": 59600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Deutsch",
+      "start": 59600,
+      "end": 59980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "spreche,",
+      "start": 59980,
+      "end": 60360,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wuerde",
+      "start": 60360,
+      "end": 60740,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ein",
+      "start": 60740,
+      "end": 61120,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "paar",
+      "start": 61120,
+      "end": 61500,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Frauen",
+      "start": 61500,
+      "end": 61880,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mit",
+      "start": 61880,
+      "end": 62260,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mir",
+      "start": 62260,
+      "end": 62640,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "nicht",
+      "start": 62640,
+      "end": 63020,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "reden.",
+      "start": 63020,
+      "end": 63400,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Okay,",
+      "start": 63800,
+      "end": 64180,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gut.",
+      "start": 64180,
+      "end": 64560,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "dann",
+      "start": 64960,
+      "end": 65340,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wir",
+      "start": 65340,
+      "end": 65720,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "sehen,",
+      "start": 65620,
+      "end": 66000,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wie",
+      "start": 66000,
+      "end": 66380,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "lange",
+      "start": 66380,
+      "end": 66760,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wir",
+      "start": 66760,
+      "end": 67140,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "auf",
+      "start": 67140,
+      "end": 67520,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Deutsch",
+      "start": 67520,
+      "end": 67900,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "reden.",
+      "start": 67900,
+      "end": 68280,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Klingt",
+      "start": 68680,
+      "end": 69060,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gut.",
+      "start": 69060,
+      "end": 69440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "manchmal",
+      "start": 69840,
+      "end": 70220,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gibt",
+      "start": 70220,
+      "end": 70600,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "es",
+      "start": 70600,
+      "end": 70980,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Problem,",
+      "start": 70980,
+      "end": 71360,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "manchmal",
+      "start": 71360,
+      "end": 71740,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "es",
+      "start": 71740,
+      "end": 72120,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ist",
+      "start": 72120,
+      "end": 72500,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ein",
+      "start": 72500,
+      "end": 72880,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Vorteil.",
+      "start": 72880,
+      "end": 73260,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Verstehe.",
+      "start": 73660,
+      "end": 74040,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 74440,
+      "end": 74820,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "suche",
+      "start": 74820,
+      "end": 75200,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "fuer",
+      "start": 75200,
+      "end": 75580,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Muttersprachler,",
+      "start": 75580,
+      "end": 75960,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "um",
+      "start": 75960,
+      "end": 76340,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mein",
+      "start": 76340,
+      "end": 76720,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Deutsch",
+      "start": 76720,
+      "end": 77100,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "zu",
+      "start": 77100,
+      "end": 77480,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "verbessern.",
+      "start": 77480,
+      "end": 77860,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Verstehe.",
+      "start": 78260,
+      "end": 78640,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ich",
+      "start": 79040,
+      "end": 79420,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "freue",
+      "start": 79420,
+      "end": 79800,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mich",
+      "start": 79800,
+      "end": 80180,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "fuer",
+      "start": 80180,
+      "end": 80560,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "diese",
+      "start": 80560,
+      "end": 80940,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Reise,",
+      "start": 80940,
+      "end": 81320,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "dass",
+      "start": 81320,
+      "end": 81700,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 81700,
+      "end": 82080,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "bald",
+      "start": 82080,
+      "end": 82460,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "gehe.",
+      "start": 82460,
+      "end": 82840,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Das",
+      "start": 83240,
+      "end": 83620,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "klingt",
+      "start": 83620,
+      "end": 84000,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "aufregend!",
+      "start": 84000,
+      "end": 84380,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Das",
+      "start": 84780,
+      "end": 85160,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "waere",
+      "start": 85160,
+      "end": 85540,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "schoen,",
+      "start": 85540,
+      "end": 85920,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "wenn",
+      "start": 85920,
+      "end": 86300,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "ich",
+      "start": 86300,
+      "end": 86680,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "mehr",
+      "start": 86680,
+      "end": 87060,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Zeit",
+      "start": 87060,
+      "end": 87440,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "haette",
+      "start": 87440,
+      "end": 87820,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "zum",
+      "start": 87820,
+      "end": 88200,
+      "confidence": 0.94,
+      "speaker": null
+    },
+    {
+      "text": "Ueben.",
+      "start": 88200,
+      "end": 88580,
+      "confidence": 0.94,
+      "speaker": null
+    }
+  ],
+  "utterances": [
+    {
+      "speaker": "B",
+      "text": "Was hast du diese Woche auf Deutsch gemacht?",
+      "start": 400,
+      "end": 3440,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Was",
+          "start": 400,
+          "end": 780,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "hast",
+          "start": 780,
+          "end": 1160,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "du",
+          "start": 1160,
+          "end": 1540,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "diese",
+          "start": 1540,
+          "end": 1920,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Woche",
+          "start": 1920,
+          "end": 2300,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "auf",
+          "start": 2300,
+          "end": 2680,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Deutsch",
+          "start": 2680,
+          "end": 3060,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gemacht?",
+          "start": 3060,
+          "end": 3440,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+      "start": 3840,
+      "end": 7640,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 3840,
+          "end": 4220,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "suche",
+          "start": 4220,
+          "end": 4600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "schon",
+          "start": 4600,
+          "end": 4980,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "seit",
+          "start": 4980,
+          "end": 5360,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ein",
+          "start": 5360,
+          "end": 5740,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "paar",
+          "start": 5740,
+          "end": 6120,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Monaten",
+          "start": 6120,
+          "end": 6500,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nach",
+          "start": 6500,
+          "end": 6880,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "einem",
+          "start": 6880,
+          "end": 7260,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Tandempartner.",
+          "start": 7260,
+          "end": 7640,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Ah interessant, erzaehlen Sie mehr.",
+      "start": 8040,
+      "end": 9940,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ah",
+          "start": 8040,
+          "end": 8420,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "interessant,",
+          "start": 8420,
+          "end": 8800,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "erzaehlen",
+          "start": 8800,
+          "end": 9180,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Sie",
+          "start": 9180,
+          "end": 9560,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mehr.",
+          "start": 9560,
+          "end": 9940,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Trotzdem kann ich nicht mit die Leute sprechen.",
+      "start": 10340,
+      "end": 13380,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Trotzdem",
+          "start": 10340,
+          "end": 10720,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "kann",
+          "start": 10720,
+          "end": 11100,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 11100,
+          "end": 11480,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nicht",
+          "start": 11480,
+          "end": 11860,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mit",
+          "start": 11860,
+          "end": 12240,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "die",
+          "start": 12240,
+          "end": 12620,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Leute",
+          "start": 12620,
+          "end": 13000,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "sprechen.",
+          "start": 13000,
+          "end": 13380,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Wieso? Was ist das Problem?",
+      "start": 13780,
+      "end": 15680,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Wieso?",
+          "start": 13780,
+          "end": 14160,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Was",
+          "start": 14160,
+          "end": 14540,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ist",
+          "start": 14540,
+          "end": 14920,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "das",
+          "start": 14920,
+          "end": 15300,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Problem?",
+          "start": 15300,
+          "end": 15680,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich koche gern verschiedene Sachen.",
+      "start": 16080,
+      "end": 17980,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 16080,
+          "end": 16460,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "koche",
+          "start": 16460,
+          "end": 16840,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gern",
+          "start": 16840,
+          "end": 17220,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "verschiedene",
+          "start": 17220,
+          "end": 17600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Sachen.",
+          "start": 17600,
+          "end": 17980,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Oh, was kochst du am liebsten?",
+      "start": 18380,
+      "end": 20660,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Oh,",
+          "start": 18380,
+          "end": 18760,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "was",
+          "start": 18760,
+          "end": 19140,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "kochst",
+          "start": 19140,
+          "end": 19520,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "du",
+          "start": 19520,
+          "end": 19900,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "am",
+          "start": 19900,
+          "end": 20280,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "liebsten?",
+          "start": 20280,
+          "end": 20660,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+      "start": 21060,
+      "end": 25620,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich,",
+          "start": 21060,
+          "end": 21440,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "aeh,",
+          "start": 21440,
+          "end": 21820,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 21820,
+          "end": 22200,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "weiss",
+          "start": 22200,
+          "end": 22580,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nicht",
+          "start": 22580,
+          "end": 22960,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "genau,",
+          "start": 22960,
+          "end": 23340,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "aehm,",
+          "start": 23340,
+          "end": 23720,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wie",
+          "start": 23720,
+          "end": 24100,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 24100,
+          "end": 24480,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "das",
+          "start": 24480,
+          "end": 24860,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "sagen",
+          "start": 24860,
+          "end": 25240,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "soll.",
+          "start": 25240,
+          "end": 25620,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich sage dir ein Beispiel.",
+      "start": 26020,
+      "end": 27920,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 26020,
+          "end": 26400,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "sage",
+          "start": 26400,
+          "end": 26780,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "dir",
+          "start": 26780,
+          "end": 27160,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ein",
+          "start": 27160,
+          "end": 27540,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Beispiel.",
+          "start": 27540,
+          "end": 27920,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Okay, verstehe.",
+      "start": 28320,
+      "end": 29080,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Okay,",
+          "start": 28320,
+          "end": 28700,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "verstehe.",
+          "start": 28700,
+          "end": 29080,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Wie viele Tage war ich in die Krankenhaus?",
+      "start": 29480,
+      "end": 32520,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Wie",
+          "start": 29480,
+          "end": 29860,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "viele",
+          "start": 29860,
+          "end": 30240,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Tage",
+          "start": 30240,
+          "end": 30620,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "war",
+          "start": 30620,
+          "end": 31000,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 31000,
+          "end": 31380,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "in",
+          "start": 31380,
+          "end": 31760,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "die",
+          "start": 31760,
+          "end": 32140,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Krankenhaus?",
+          "start": 32140,
+          "end": 32520,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Oh nein, warst du krank?",
+      "start": 32920,
+      "end": 34820,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Oh",
+          "start": 32920,
+          "end": 33300,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nein,",
+          "start": 33300,
+          "end": 33680,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "warst",
+          "start": 33680,
+          "end": 34060,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "du",
+          "start": 34060,
+          "end": 34440,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "krank?",
+          "start": 34440,
+          "end": 34820,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich lebe in die USA.",
+      "start": 35220,
+      "end": 38920,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 35220,
+          "end": 35600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "lebe",
+          "start": 35600,
+          "end": 35980,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "in",
+          "start": 37780,
+          "end": 38160,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "die",
+          "start": 38160,
+          "end": 38540,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "USA.",
+          "start": 38540,
+          "end": 38920,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Und wie war das Gespraech mit dem Partner?",
+      "start": 39320,
+      "end": 42360,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Und",
+          "start": 39320,
+          "end": 39700,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wie",
+          "start": 39700,
+          "end": 40080,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "war",
+          "start": 40080,
+          "end": 40460,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "das",
+          "start": 40460,
+          "end": 40840,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Gespraech",
+          "start": 40840,
+          "end": 41220,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mit",
+          "start": 41220,
+          "end": 41600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "dem",
+          "start": 41600,
+          "end": 41980,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Partner?",
+          "start": 41980,
+          "end": 42360,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "und dann kommt letztes Jahr.",
+      "start": 42760,
+      "end": 44660,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "und",
+          "start": 42760,
+          "end": 43140,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "dann",
+          "start": 43140,
+          "end": 43520,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "kommt",
+          "start": 43520,
+          "end": 43900,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "letztes",
+          "start": 43900,
+          "end": 44280,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Jahr.",
+          "start": 44280,
+          "end": 44660,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Wirklich? Was ist passiert?",
+      "start": 45060,
+      "end": 46580,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Wirklich?",
+          "start": 45060,
+          "end": 45440,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Was",
+          "start": 45440,
+          "end": 45820,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ist",
+          "start": 45820,
+          "end": 46200,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "passiert?",
+          "start": 46200,
+          "end": 46580,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+      "start": 46980,
+      "end": 50400,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 46980,
+          "end": 47360,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mache",
+          "start": 47360,
+          "end": 47740,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ein",
+          "start": 47740,
+          "end": 48120,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Urlaub",
+          "start": 48120,
+          "end": 48500,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "in",
+          "start": 48500,
+          "end": 48880,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Hamburg",
+          "start": 48880,
+          "end": 49260,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "und",
+          "start": 49260,
+          "end": 49640,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nach",
+          "start": 49640,
+          "end": 50020,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Koeln.",
+          "start": 50020,
+          "end": 50400,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Klingt schoen!",
+      "start": 50800,
+      "end": 51560,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Klingt",
+          "start": 50800,
+          "end": 51180,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "schoen!",
+          "start": 51180,
+          "end": 51560,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+      "start": 51960,
+      "end": 56140,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "fruher,",
+          "start": 51960,
+          "end": 52340,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "als",
+          "start": 52340,
+          "end": 52720,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 52720,
+          "end": 53100,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Kind",
+          "start": 53100,
+          "end": 53480,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "war,",
+          "start": 53480,
+          "end": 53860,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "spiele",
+          "start": 53860,
+          "end": 54240,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 54240,
+          "end": 54620,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gern",
+          "start": 54620,
+          "end": 55000,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Basketball",
+          "start": 55000,
+          "end": 55380,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "und",
+          "start": 55380,
+          "end": 55760,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "schwimme.",
+          "start": 55760,
+          "end": 56140,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Das ist toll.",
+      "start": 56540,
+      "end": 57680,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Das",
+          "start": 56540,
+          "end": 56920,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ist",
+          "start": 56920,
+          "end": 57300,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "toll.",
+          "start": 57300,
+          "end": 57680,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+      "start": 58080,
+      "end": 63400,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "weil",
+          "start": 58080,
+          "end": 58460,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 58460,
+          "end": 58840,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "damals",
+          "start": 58840,
+          "end": 59220,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "kein",
+          "start": 59220,
+          "end": 59600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Deutsch",
+          "start": 59600,
+          "end": 59980,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "spreche,",
+          "start": 59980,
+          "end": 60360,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wuerde",
+          "start": 60360,
+          "end": 60740,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ein",
+          "start": 60740,
+          "end": 61120,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "paar",
+          "start": 61120,
+          "end": 61500,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Frauen",
+          "start": 61500,
+          "end": 61880,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mit",
+          "start": 61880,
+          "end": 62260,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mir",
+          "start": 62260,
+          "end": 62640,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "nicht",
+          "start": 62640,
+          "end": 63020,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "reden.",
+          "start": 63020,
+          "end": 63400,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Okay, gut.",
+      "start": 63800,
+      "end": 64560,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Okay,",
+          "start": 63800,
+          "end": 64180,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gut.",
+          "start": 64180,
+          "end": 64560,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "dann wir sehen, wie lange wir auf Deutsch reden.",
+      "start": 64960,
+      "end": 68280,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "dann",
+          "start": 64960,
+          "end": 65340,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wir",
+          "start": 65340,
+          "end": 65720,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "sehen,",
+          "start": 65620,
+          "end": 66000,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wie",
+          "start": 66000,
+          "end": 66380,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "lange",
+          "start": 66380,
+          "end": 66760,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wir",
+          "start": 66760,
+          "end": 67140,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "auf",
+          "start": 67140,
+          "end": 67520,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Deutsch",
+          "start": 67520,
+          "end": 67900,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "reden.",
+          "start": 67900,
+          "end": 68280,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Klingt gut.",
+      "start": 68680,
+      "end": 69440,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Klingt",
+          "start": 68680,
+          "end": 69060,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gut.",
+          "start": 69060,
+          "end": 69440,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+      "start": 69840,
+      "end": 73260,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "manchmal",
+          "start": 69840,
+          "end": 70220,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gibt",
+          "start": 70220,
+          "end": 70600,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "es",
+          "start": 70600,
+          "end": 70980,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Problem,",
+          "start": 70980,
+          "end": 71360,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "manchmal",
+          "start": 71360,
+          "end": 71740,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "es",
+          "start": 71740,
+          "end": 72120,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ist",
+          "start": 72120,
+          "end": 72500,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ein",
+          "start": 72500,
+          "end": 72880,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Vorteil.",
+          "start": 72880,
+          "end": 73260,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Verstehe.",
+      "start": 73660,
+      "end": 74040,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Verstehe.",
+          "start": 73660,
+          "end": 74040,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+      "start": 74440,
+      "end": 77860,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 74440,
+          "end": 74820,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "suche",
+          "start": 74820,
+          "end": 75200,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "fuer",
+          "start": 75200,
+          "end": 75580,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Muttersprachler,",
+          "start": 75580,
+          "end": 75960,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "um",
+          "start": 75960,
+          "end": 76340,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mein",
+          "start": 76340,
+          "end": 76720,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Deutsch",
+          "start": 76720,
+          "end": 77100,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "zu",
+          "start": 77100,
+          "end": 77480,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "verbessern.",
+          "start": 77480,
+          "end": 77860,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Verstehe.",
+      "start": 78260,
+      "end": 78640,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Verstehe.",
+          "start": 78260,
+          "end": 78640,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+      "start": 79040,
+      "end": 82840,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Ich",
+          "start": 79040,
+          "end": 79420,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "freue",
+          "start": 79420,
+          "end": 79800,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mich",
+          "start": 79800,
+          "end": 80180,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "fuer",
+          "start": 80180,
+          "end": 80560,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "diese",
+          "start": 80560,
+          "end": 80940,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Reise,",
+          "start": 80940,
+          "end": 81320,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "dass",
+          "start": 81320,
+          "end": 81700,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 81700,
+          "end": 82080,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "bald",
+          "start": 82080,
+          "end": 82460,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "gehe.",
+          "start": 82460,
+          "end": 82840,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "B",
+      "text": "Das klingt aufregend!",
+      "start": 83240,
+      "end": 84380,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Das",
+          "start": 83240,
+          "end": 83620,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "klingt",
+          "start": 83620,
+          "end": 84000,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "aufregend!",
+          "start": 84000,
+          "end": 84380,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    },
+    {
+      "speaker": "A",
+      "text": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+      "start": 84780,
+      "end": 88580,
+      "confidence": 0.93,
+      "words": [
+        {
+          "text": "Das",
+          "start": 84780,
+          "end": 85160,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "waere",
+          "start": 85160,
+          "end": 85540,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "schoen,",
+          "start": 85540,
+          "end": 85920,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "wenn",
+          "start": 85920,
+          "end": 86300,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "ich",
+          "start": 86300,
+          "end": 86680,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "mehr",
+          "start": 86680,
+          "end": 87060,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Zeit",
+          "start": 87060,
+          "end": 87440,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "haette",
+          "start": 87440,
+          "end": 87820,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "zum",
+          "start": 87820,
+          "end": 88200,
+          "confidence": 0.94,
+          "speaker": null
+        },
+        {
+          "text": "Ueben.",
+          "start": 88200,
+          "end": 88580,
+          "confidence": 0.94,
+          "speaker": null
+        }
+      ]
+    }
+  ],
+  "speaker_labels": true
+}

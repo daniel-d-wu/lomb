@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+# Secrets -- never commit real API keys/tokens. If a real key ever ends up
+# in this directory (e.g. copied in from the project's assemblyai_key.txt
+# doc), name it one of these so it's excluded automatically rather than
+# relying on remembering not to `git add` it.
+*.env
+.env.*
+*_key.txt
+*_token.txt
+secrets.*

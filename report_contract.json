@@ -1,0 +1,82 @@
+{
+  "session": {
+    "targetSpeakerId": "A",
+    "sentenceCount": 6,
+    "windowCount": 6
+  },
+  "fluency": {
+    "wpm": null,
+    "ohRate": null,
+    "ahRate": null,
+    "_coverage_note": "Not computed by this pipeline -- these are Python-logic metrics (see claude/lomb_metric_definitions_v1.md), a separate module not yet built.",
+    "unfilledPause": {
+      "boundaryCount": 47,
+      "suspectCount": 47,
+      "suspectRate": 1.0,
+      "reliable": false,
+      "note": "Over half of all word boundaries were flagged 'suspect' -- this almost always means the input timestamps were mechanically uniform (as in a synthetic test transcript), not that the speaker actually paused unnaturally often. Treat this run's pause data as a pipeline-wiring check, not a real fluency finding, until it's re-run against real ASR output."
+    }
+  },
+  "accuracy": {
+    "errors": [
+      {
+        "tag": "Case: two-way preposition (Wechselpräposition)",
+        "bad": "Ich lebe in die USA.",
+        "good": null,
+        "why": "'lebe' describes a static location, so the dative is required: 'in den USA,' not 'in die USA'."
+      },
+      {
+        "tag": "Verb position",
+        "bad": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "good": null,
+        "why": "With fronted 'dann', the finite verb must precede the subject. 'wir sehen' is incorrect; it should be 'Dann sehen wir ...'."
+      },
+      {
+        "tag": "Preposition (L1 transfer)",
+        "bad": "Ich lebe in die USA.",
+        "good": null,
+        "why": "The verb 'leben' with a location takes 'in' plus the dative for a static location: 'Ich lebe in den USA.'"
+      },
+      {
+        "tag": "Preposition (L1 transfer)",
+        "bad": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "good": null,
+        "why": "'suchen' governs 'nach', not 'für'; the sentence should use 'Ich suche nach Muttersprachlern'."
+      },
+      {
+        "tag": "Word choice / collocation",
+        "bad": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "good": null,
+        "why": "„wie lange wir auf Deutsch reden“ is a natural phrase, but „dann wir sehen“ is not a native German word order. The natural form is „dann sehen wir, wie lange wir auf Deutsch reden“."
+      },
+      {
+        "tag": "Word choice / collocation",
+        "bad": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "good": null,
+        "why": "'für Muttersprachler suchen' is not a natural collocation for this meaning. Native speakers would say 'Ich suche Muttersprachler, um mein Deutsch zu verbessern' or 'Ich suche nach Muttersprachlern …'."
+      }
+    ],
+    "_coverage_notes": [
+      "GDD-1: ran, 0 flagged this session.",
+      "GDD-2: 1 flagged this session, all shown.",
+      "GVT-1: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero.",
+      "GVT-2: 1 flagged this session, all shown.",
+      "LPF: 3 flagged this session, only 2 shown per the 2026-09-02 display cap.",
+      "LP: 3 flagged this session, only 2 shown per the 2026-09-02 display cap."
+    ]
+  },
+  "complexity": {
+    "ttr": null,
+    "vocdD": null,
+    "wuerde": null,
+    "hypothetical": null,
+    "_coverage_note": "ttr/vocdD/wuerde/hypothetical are Python-logic metrics, not computed by this pipeline. structureBreadth below IS from this run (STRUCTURE_BREADTH, LLM-assisted).",
+    "structureBreadth": {
+      "breadthScore": 2,
+      "labels": [
+        "dass_clause",
+        "konjunktiv_ii"
+      ]
+    }
+  }
+}

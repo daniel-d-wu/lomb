@@ -1,0 +1,1029 @@
+{
+  "target_speaker_id": "A",
+  "sentence_count": 6,
+  "window_count": 6,
+  "results": {
+    "GDD-1": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'seit' governs 'ein paar Monaten'; the plural dative form is correct."
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence contains no always-dative preposition from the specified list; 'für' is not included, so this error type cannot be assessed."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The always-dative preposition 'zu' is contracted in 'zum Üben' (zu dem Üben), and the neuter nominalized infinitive correctly takes dative 'dem'."
+        }
+      }
+    ],
+    "GDD-2": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'lebe' describes a static location, so the dative is required: 'in den USA,' not 'in die USA'."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence contains no Wechselpräposition phrase with a case-marked article or adjective to evaluate. The word 'auf' is part of 'auf Deutsch' and does not show the relevant case distinction."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": true,
+        "output": null
+      }
+    ],
+    "GVT-2": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first; the finite verb 'suche' is correctly in second position."
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with normal subject-first order: 'Ich lebe ...'. There is no fronted element requiring V2 inversion, and the finite verb 'lebe' is correctly in second position."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "With fronted 'dann', the finite verb must precede the subject. 'wir sehen' is incorrect; it should be 'Dann sehen wir ...'."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with subject-initial order ('Ich suche'), so the finite verb is correctly in second position."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The subordinate clause introduced by 'dass' correctly places the finite verb 'gehe' at the end."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "In the subordinate wenn-clause, the finite verb 'haette' is correctly placed at the end."
+        }
+      }
+    ],
+    "LPF": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'suchen' correctly governs 'nach' here: 'nach einem Tandempartner'."
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The verb 'leben' with a location takes 'in' plus the dative for a static location: 'Ich lebe in den USA.'"
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence is disfluent, but no confidently identifiable verb-governed preposition error can be determined."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'suchen' governs 'nach', not 'für'; the sentence should use 'Ich suche nach Muttersprachlern'."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'sich freuen' for an upcoming event governs 'auf', not 'für'; the sentence should use 'Ich freue mich auf diese Reise'."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No verb-governed preposition error is present. 'zum Üben' is the correct contraction of 'zu dem Üben' and is not governed by 'hätte'."
+        }
+      }
+    ],
+    "LP": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "„nach einem Tandempartner suchen“ ist eine natürliche und idiomatische deutsche Kollokation."
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The issue is the incorrect accusative article after 'in' for a location ('in den USA'), which is a grammatical case error, not a wrong collocate or chunk."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "„wie lange wir auf Deutsch reden“ is a natural phrase, but „dann wir sehen“ is not a native German word order. The natural form is „dann sehen wir, wie lange wir auf Deutsch reden“."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'für Muttersprachler suchen' is not a natural collocation for this meaning. Native speakers would say 'Ich suche Muttersprachler, um mein Deutsch zu verbessern' or 'Ich suche nach Muttersprachlern …'."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'sich für eine Reise freuen' is not the natural collocation for looking forward to it; native speakers say 'sich auf eine Reise freuen'."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No wrong collocate or chunk is present. “Das wäre schön, wenn ich mehr Zeit hätte zum Üben” is natural German; “mehr Zeit zum Üben hätte” would simply be a more usual word order."
+        }
+      }
+    ],
+    "STRUCTURE_BREADTH": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "dass_clause"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "konjunktiv_ii"
+          ],
+          "confidence": "high"
+        }
+      }
+    ],
+    "UNFILLED_PAUSE": [
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 3.84,
+            "end": 4.22
+          },
+          {
+            "word": "suche",
+            "start": 4.22,
+            "end": 4.6
+          },
+          {
+            "word": "schon",
+            "start": 4.6,
+            "end": 4.98
+          },
+          {
+            "word": "seit",
+            "start": 4.98,
+            "end": 5.36
+          },
+          {
+            "word": "ein",
+            "start": 5.36,
+            "end": 5.74
+          },
+          {
+            "word": "paar",
+            "start": 5.74,
+            "end": 6.12
+          },
+          {
+            "word": "Monaten",
+            "start": 6.12,
+            "end": 6.5
+          },
+          {
+            "word": "nach",
+            "start": 6.5,
+            "end": 6.88
+          },
+          {
+            "word": "einem",
+            "start": 6.88,
+            "end": 7.26
+          },
+          {
+            "word": "Tandempartner.",
+            "start": 7.26,
+            "end": 7.64
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "suche"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "suche",
+                "schon"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "schon",
+                "seit"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "seit",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "ein",
+                "paar"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "paar",
+                "Monaten"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "Monaten",
+                "nach"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "nach",
+                "einem"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "einem",
+                "Tandempartner."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 10.34,
+            "end": 10.72
+          },
+          {
+            "word": "lebe",
+            "start": 10.72,
+            "end": 11.1
+          },
+          {
+            "word": "in",
+            "start": 12.9,
+            "end": 13.28
+          },
+          {
+            "word": "die",
+            "start": 13.28,
+            "end": 13.66
+          },
+          {
+            "word": "USA.",
+            "start": 13.66,
+            "end": 14.04
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "lebe"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps may indicate merged or artificially aligned word boundaries."
+            },
+            {
+              "between": [
+                "lebe",
+                "in"
+              ],
+              "status": "suspect",
+              "reasoning": "A 1.8-second gap between ordinary adjacent words, with no disfluency marker or punctuation-like break, is unusually large and may reflect a dropped word or timestamp misalignment."
+            },
+            {
+              "between": [
+                "in",
+                "die"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps may indicate merged or artificially aligned word boundaries."
+            },
+            {
+              "between": [
+                "die",
+                "USA."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps may indicate merged or artificially aligned word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "dann",
+            "start": 17.88,
+            "end": 18.26
+          },
+          {
+            "word": "wir",
+            "start": 18.26,
+            "end": 18.64
+          },
+          {
+            "word": "sehen,",
+            "start": 18.64,
+            "end": 19.02
+          },
+          {
+            "word": "wie",
+            "start": 19.02,
+            "end": 19.4
+          },
+          {
+            "word": "lange",
+            "start": 19.4,
+            "end": 19.78
+          },
+          {
+            "word": "wir",
+            "start": 19.78,
+            "end": 20.16
+          },
+          {
+            "word": "auf",
+            "start": 20.16,
+            "end": 20.54
+          },
+          {
+            "word": "Deutsch",
+            "start": 20.54,
+            "end": 20.92
+          },
+          {
+            "word": "reden.",
+            "start": 20.92,
+            "end": 21.3
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "dann",
+                "wir"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary adjacent words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "wir",
+                "sehen,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "sehen,",
+                "wie"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps, despite punctuation marking a likely boundary, suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "wie",
+                "lange"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact."
+            },
+            {
+              "between": [
+                "lange",
+                "wir"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact."
+            },
+            {
+              "between": [
+                "wir",
+                "auf"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact."
+            },
+            {
+              "between": [
+                "auf",
+                "Deutsch"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact."
+            },
+            {
+              "between": [
+                "Deutsch",
+                "reden."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests an alignment artifact."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 22.86,
+            "end": 23.24
+          },
+          {
+            "word": "suche",
+            "start": 23.24,
+            "end": 23.62
+          },
+          {
+            "word": "fuer",
+            "start": 23.62,
+            "end": 24.0
+          },
+          {
+            "word": "Muttersprachler,",
+            "start": 24.0,
+            "end": 24.38
+          },
+          {
+            "word": "um",
+            "start": 24.38,
+            "end": 24.76
+          },
+          {
+            "word": "mein",
+            "start": 24.76,
+            "end": 25.14
+          },
+          {
+            "word": "Deutsch",
+            "start": 25.14,
+            "end": 25.52
+          },
+          {
+            "word": "zu",
+            "start": 25.52,
+            "end": 25.9
+          },
+          {
+            "word": "verbessern.",
+            "start": 25.9,
+            "end": 26.28
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "suche"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "suche",
+                "fuer"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "fuer",
+                "Muttersprachler,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "Muttersprachler,",
+                "um"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "um",
+                "mein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "mein",
+                "Deutsch"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "Deutsch",
+                "zu"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "zu",
+                "verbessern."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 27.46,
+            "end": 27.84
+          },
+          {
+            "word": "freue",
+            "start": 27.84,
+            "end": 28.22
+          },
+          {
+            "word": "mich",
+            "start": 28.22,
+            "end": 28.6
+          },
+          {
+            "word": "fuer",
+            "start": 28.6,
+            "end": 28.98
+          },
+          {
+            "word": "diese",
+            "start": 28.98,
+            "end": 29.36
+          },
+          {
+            "word": "Reise,",
+            "start": 29.36,
+            "end": 29.74
+          },
+          {
+            "word": "dass",
+            "start": 29.74,
+            "end": 30.12
+          },
+          {
+            "word": "ich",
+            "start": 30.12,
+            "end": 30.5
+          },
+          {
+            "word": "bald",
+            "start": 30.5,
+            "end": 30.88
+          },
+          {
+            "word": "gehe.",
+            "start": 30.88,
+            "end": 31.26
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "freue"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "freue",
+                "mich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "mich",
+                "fuer"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "fuer",
+                "diese"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "diese",
+                "Reise,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "Reise,",
+                "dass"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap despite punctuation-like comma boundary may indicate merged or mechanically segmented timestamps."
+            },
+            {
+              "between": [
+                "dass",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "ich",
+                "bald"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "bald",
+                "gehe."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than independently reliable word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Das",
+            "start": 33.2,
+            "end": 33.58
+          },
+          {
+            "word": "waere",
+            "start": 33.58,
+            "end": 33.96
+          },
+          {
+            "word": "schoen,",
+            "start": 33.96,
+            "end": 34.34
+          },
+          {
+            "word": "wenn",
+            "start": 34.34,
+            "end": 34.72
+          },
+          {
+            "word": "ich",
+            "start": 34.72,
+            "end": 35.1
+          },
+          {
+            "word": "mehr",
+            "start": 35.1,
+            "end": 35.48
+          },
+          {
+            "word": "Zeit",
+            "start": 35.48,
+            "end": 35.86
+          },
+          {
+            "word": "haette",
+            "start": 35.86,
+            "end": 36.24
+          },
+          {
+            "word": "zum",
+            "start": 36.24,
+            "end": 36.62
+          },
+          {
+            "word": "Ueben.",
+            "start": 36.62,
+            "end": 37.0
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Das",
+                "waere"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality across consecutive words is likely an artificial merged alignment rather than independently reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "waere",
+                "schoen,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "schoen,",
+                "wenn"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap despite punctuation-like comma boundary is unlikely to reflect a reliable independently timed boundary."
+            },
+            {
+              "between": [
+                "wenn",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "ich",
+                "mehr"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "mehr",
+                "Zeit"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "Zeit",
+                "haette"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "haette",
+                "zum"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            },
+            {
+              "between": [
+                "zum",
+                "Ueben."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests mechanically contiguous timestamps and possible merged alignment."
+            }
+          ],
+          "confidence": "high"
+        }
+      }
+    ]
+  },
+  "structure_breadth_score": 2,
+  "structure_breadth_labels": [
+    "dass_clause",
+    "konjunktiv_ii"
+  ]
+}
