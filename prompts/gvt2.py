@@ -7,12 +7,29 @@ mechanical -- the reliability risk this metric was reclassified for is
 that a written-text parser degrades on disfluent, self-corrected
 spontaneous speech, which is most of this corpus.
 
-4 of the 5 examples are real transcript errors/corrections from
-dan_error_analysis_master_v3.md (GVT error patterns 2 and 3). The
-self-correction example is illustrative (constructed to demonstrate the
-"evaluate only the final completed clause" instruction) since a real
-transcript example combining a restart with a verb-order error was not
-available in the corpus at the time this was written.
+5 of the 6 examples are real transcript errors/corrections from
+dan_error_analysis_master_v3.md and all_grammar_errors_master.json (GVT
+error patterns 2 and 3). The self-correction example is illustrative
+(constructed to demonstrate the "evaluate only the final completed
+clause" instruction) since a real transcript example combining a restart
+with a verb-order error was not available in the corpus at the time this
+was written.
+
+2026-09-05: added a 6th example covering a fronted element that is
+ITSELF a full clause with its own subject (a "compound Vorfeld") -- a gap
+in coverage that a live pipeline run had already caught in the wild: the
+model flagged "fruher, als ich Kind war, spiele ich gern Basketball und
+schwimme." as a V2 inversion error, reasoning that "'spiele' follows
+'ich' instead of preceding it" -- a factual misreading of the actual word
+order (the string is "...spiele ich...", verb already correctly first).
+Diagnosed root cause: none of the other 5 examples show a fronted element
+containing its own embedded subject, so the model had nothing to learn
+from about not confusing the embedded clause's subject ("ich" inside "als
+ich Kind war") with the main clause's own subject when checking which
+side of the verb it falls on. The new example below is real corpus data
+(natasja_italki9) with exactly this structure, correctly classified as
+error: false, with the reasoning spelling out how to tell the two "ich"s
+apart.
 """
 
 from metric_types import MetricPromptConfig
@@ -61,6 +78,12 @@ FEW_SHOT_EXAMPLES = [
         "answer": {"error": False, "confidence": "low",
                    "reasoning": "Illustrative example (not from the transcript corpus) of a self-correction: the speaker abandons the first 'dass' clause and restarts. Evaluating only the final completed clause ('dass mein Deutsch ziemlich okay ist'), the verb is correctly final -- no error. Replace with a validated real corpus example when one is available.",
                    "corrected": "ich denke, dass -- also, dass mein Deutsch ziemlich okay ist."},
+    },
+    {
+        "input": "Ja, als ich Kind war, gehe ich zu einer Privatschule in Hongkong.",
+        "answer": {"error": False, "confidence": "high",
+                   "reasoning": "The fronted element here is itself a full clause with its own subject: 'als ich Kind war' -- that 'ich' belongs to the embedded als-clause, not the main clause. Don't confuse it with the MAIN clause's own subject, which is the second, separate 'ich' that comes after the verb. Checked that way: the finite verb 'gehe' correctly comes immediately after the fronted als-clause, before the main clause's own subject 'ich' -- V2 order is satisfied, no inversion error. (This sentence does have a real GVT-1 tense-drift error -- 'gehe' should be 'ging', since 'als ich Kind war' establishes a past frame -- but that's a different metric's job; this one checks ONLY word order.)",
+                   "corrected": "Ja, als ich Kind war, gehe ich zu einer Privatschule in Hongkong."},
     },
 ]
 

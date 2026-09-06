@@ -80,25 +80,38 @@ numbers):
   md's own 6-metric error cap (GDD-1, GDD-2, GVT-1, GVT-2, LPF, LP) never
   included either of them; that's a reporting-scope decision, unrelated to
   whether pipeline.py runs them. As of 2026-09-03 both DO run in
-  pipeline.py (FORMULAIC via a candidate-scan, FILLED_PAUSE redefined onto
-  transcript word-timestamps -- see pipeline.py and prompts/formulaic.py /
-  prompts/filled_pause.py for the full reasoning), so a fresh
-  pipeline_result.json will have "FORMULAIC" and "FILLED_PAUSE" keys with
-  real per-pair / per-window output in them -- this file just doesn't
-  surface either into the HTML report yet, the same "not yet surfaced,
-  not the same as zero found" distinction this module already applies to
-  everything else it hasn't built a summarizer for. A pipeline_result.json
-  produced before 2026-09-03 won't have those keys at all, and (like every
-  other "metric absent from results" case in this file) that still
-  correctly reads as a coverage note here, never a false "zero found."
-  GVT-1 went through this identical "not wired in" -> "wired in, not yet
-  its own report section" progression one step earlier the same day, via
-  speaker_filter.to_sentence_windows() -- it single-sentence-fed before
-  that, which meant it could never show the model both halves of a tense
-  drift in one request; GVT-1 IS one of the 6 ERROR_METRICS, so once it
-  started producing "GVT-1" keys with `corrected` fields, this file's
-  existing diff-and-card logic picked it up automatically, no separate
-  summarizer needed the way FORMULAIC/FILLED_PAUSE would.
+  pipeline.py (FILLED_PAUSE redefined onto transcript word-timestamps --
+  see prompts/filled_pause.py for the full reasoning; FORMULAIC ran via an
+  LLM candidate-scan at the time, but see the very next paragraph for what
+  changed there two days later), so a fresh pipeline_result.json will have
+  "FORMULAIC" and "FILLED_PAUSE" keys with real per-match / per-window
+  output in them -- this file just doesn't surface either into the HTML
+  report yet, the same "not yet surfaced, not the same as zero found"
+  distinction this module already applies to everything else it hasn't
+  built a summarizer for. A pipeline_result.json produced before
+  2026-09-03 won't have those keys at all, and (like every other "metric
+  absent from results" case in this file) that still correctly reads as a
+  coverage note here, never a false "zero found." GVT-1 went through this
+  identical "not wired in" -> "wired in, not yet its own report section"
+  progression one step earlier the same day, via speaker_filter.
+  to_sentence_windows() -- it single-sentence-fed before that, which meant
+  it could never show the model both halves of a tense drift in one
+  request; GVT-1 IS one of the 6 ERROR_METRICS, so once it started
+  producing "GVT-1" keys with `corrected` fields, this file's existing
+  diff-and-card logic picked it up automatically, no separate summarizer
+  needed the way FORMULAIC/FILLED_PAUSE would.
+
+- 2026-09-05: FORMULAIC's own output dict shape is UNCHANGED by its move
+  to a deterministic regex metric (still {"formulaic": bool, "confidence":
+  str, "reasoning": str} per entry -- see pipeline.py's REGEX_METRICS
+  handling), so nothing in this file needed to change for that switch;
+  this note exists only so a reader comparing a pre- and post-2026-09-05
+  pipeline_result.json's "FORMULAIC" entries isn't surprised to find them
+  structurally identical despite the computation behind them being
+  completely different (every entry's "confidence" is now always "high"
+  and "formulaic" is now always true, since a regex match no longer goes
+  through any disambiguation step -- see prompts/formulaic.py's own
+  docstring for that tradeoff).
 """
 
 import difflib

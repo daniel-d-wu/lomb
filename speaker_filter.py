@@ -18,6 +18,13 @@ original recording had 2 speakers, 5, or (degenerate but valid) 1 -- none
 of this counts or assumes how many OTHER speakers exist. See the
 speaker-count audit below the class definitions for how that claim was
 checked against all 10 registered prompts, not just asserted.
+
+2026-09-06: added map_words_to_sentences(), which links to_sentences()'
+sentence-level view and to_word_timestamp_windows()' word-level view
+together for the first time -- see that function's own docstring. This
+closes the gap that was blocking FILLED_PAUSE/UNFILLED_PAUSE (moving to
+direct/regex computation) from reporting which sentence(s) a pause falls
+in using the same sentence_indices scheme as every other feature.
 """
 
 import re
@@ -102,10 +109,13 @@ def to_sentences(target_turns: list[Turn]) -> list[str]:
     GVT-2, LPF, LP, STRUCTURE_BREADTH. Also the raw material two OTHER
     functions below build on top of, rather than feeding directly: GVT-1
     actually runs on windows of these (see to_sentence_windows()), and
-    FORMULAIC actually runs on (candidate, sentence) pairs built from
-    these (see to_formulaic_candidates()) -- both are "input_kind ==
-    sentence" on paper (metric_types.py has no richer category for either
-    shape) but neither is fed one bare entry from this list at a time.
+    FORMULAIC actually runs on regex matches found in these (see
+    find_formulaic_matches()) -- GVT-1 is "input_kind == sentence" on paper
+    (metric_types.py has no richer category for its actual shape) but
+    isn't fed one bare entry from this list at a time either; FORMULAIC
+    isn't an LLM metric at all anymore as of 2026-09-05 (see
+    find_formulaic_matches()'s own docstring), so it has no input_kind to
+    speak of in the first place.
 
     Placeholder sentence-splitting (naive split on .?!) -- German
     sentence-boundary detection on disfluent ASR output is a real
@@ -171,41 +181,31 @@ def to_sentence_windows(target_turns: list[Turn], window_size: int = 3) -> list[
     ]
 
 
-def to_formulaic_candidates(target_turns: list[Turn], bundles: list[str]) -> list[str]:
-    """Feeds FORMULAIC. 2026-09-03: added alongside prompts/formulaic.py's
-    new BUNDLES list, for the same reason to_sentence_windows() got added
-    for GVT-1 today -- FORMULAIC's own CONFIG.input_kind comment already
-    said "actually candidate + sentence -- see
-    speaker_filter.to_formulaic_candidates()" as a forward reference before
-    this function existed; this is that function.
-
-    Unlike every other builder in this module, FORMULAIC's real unit of
-    work isn't one sentence -- it's one (candidate, sentence) PAIR, because
-    the whole point of the metric is deciding whether one specific
-    candidate word/phrase is being used formulaically IN that sentence, not
-    classifying the sentence as a whole. So this scans each sentence from
-    to_sentences() against `bundles` (the caller passes prompts.formulaic's
-    own BUNDLES constant -- not imported directly here, so this module
-    never has to know FORMULAIC-specific content, same separation
-    to_word_timestamp_windows() keeps from FILLED_PAUSE/UNFILLED_PAUSE's
-    own trigger tokens) and emits one formatted
-    'Candidate: "X" | Sentence: "Y"' string -- the exact shape
-    prompts/formulaic.py's own few-shot examples use -- per match.
+def find_formulaic_matches(target_turns: list[Turn], bundles: list[str]) -> list[dict]:
+    """Computes FORMULAIC. Renamed 2026-09-05 from to_formulaic_candidates()
+    -- per Dan's explicit instruction, FORMULAIC is now a deterministic
+    regex metric, not an LLM-assisted one (see prompts/formulaic.py's
+    module docstring for the accuracy tradeoff that acceptance makes), so
+    what this function returns changed along with the name: it used to
+    format an LLM-prompt-ready 'Candidate: "X" | Sentence: "Y"' string per
+    hit (the exact shape prompts/formulaic.py's now-deleted few-shot
+    examples used) for pipeline.py to hand to registry.classify(). There's
+    no LLM prompt to format for anymore, so this just returns plain
+    {"candidate": str, "sentence": str} records -- pipeline.py builds
+    whatever display string it wants directly from those two fields, and a
+    match against `bundles` now IS the metric's answer, not merely a
+    screen for whether an LLM call is worth making.
 
     Matching reuses prefilter.py's own approach (\\b...\\b, case-insensitive,
     longest-candidate-first so a short candidate can't shadow a longer one
     that contains it) rather than inventing a second way to do the same
     thing. A sentence containing none of `bundles` contributes zero
-    entries -- the same "skip what can't possibly trigger" property
-    prefilter.py's should_run() gives GDD-1/GDD-2, achieved here by
-    construction instead of a separate filter step, since for FORMULAIC the
-    candidate-scan and the "is it worth a call" decision are the same
-    question.
+    entries.
 
     Deduplicated per sentence: if a candidate appears more than once in the
-    same sentence (repetition, false starts), it's still only one pair --
-    repeating it wouldn't give the LLM call any new context, only inflate
-    the call count.
+    same sentence (repetition, false starts), it's still only one match
+    record -- repeating it wouldn't add information, only inflate the
+    count.
     """
     sentences = to_sentences(target_turns)
     if not sentences or not bundles:
@@ -215,11 +215,10 @@ def to_formulaic_candidates(target_turns: list[Turn], bundles: list[str]) -> lis
     # Case-insensitive matching means the text actually found in the
     # sentence (e.g. capitalized "Mal" at a sentence start) may not be
     # spelled exactly like its BUNDLES entry -- report the canonical
-    # BUNDLES spelling in the candidate pair (what prompts/formulaic.py's
-    # few-shot examples key off of), not whatever casing happened to
+    # BUNDLES spelling as the candidate, not whatever casing happened to
     # appear in this particular sentence.
     canonical_by_lower = {b.lower(): b for b in bundles}
-    candidates = []
+    matches = []
     for sentence in sentences:
         seen = set()
         for match in pattern.finditer(sentence):
@@ -227,8 +226,8 @@ def to_formulaic_candidates(target_turns: list[Turn], bundles: list[str]) -> lis
             if canonical in seen:
                 continue
             seen.add(canonical)
-            candidates.append(f'Candidate: "{canonical}" | Sentence: "{sentence}"')
-    return candidates
+            matches.append({"candidate": canonical, "sentence": sentence})
+    return matches
 
 
 def to_word_timestamp_windows(target_turns: list[Turn], window_size: int = 12) -> list[list[dict]]:
@@ -260,6 +259,88 @@ def to_word_timestamp_windows(target_turns: list[Turn], window_size: int = 12) -
             if chunk:
                 windows.append(chunk)
     return windows
+
+
+CLAUSE_CONJUNCTIONS = {
+    # Common German subordinating conjunctions -- a word immediately
+    # followed by one of these is treated as a likely clause boundary.
+    "weil", "dass", "als", "wenn", "obwohl", "waehrend", "während",
+    "bevor", "nachdem", "ob", "damit", "sodass", "indem", "sobald",
+    "seit", "seitdem",
+    # Common coordinating conjunctions -- same treatment.
+    "und", "aber", "oder", "sondern", "denn",
+}
+
+
+def map_words_to_sentences(target_turns: list[Turn]) -> list[dict]:
+    """The missing link between to_sentences() (sentence-level text, no
+    word linkage) and to_word_timestamp_windows() (word-level timestamps,
+    no sentence linkage) -- added 2026-09-06 because FILLED_PAUSE and
+    UNFILLED_PAUSE (moving to direct/regex computation, per Dan's
+    instruction) need to report which sentence(s) a pause falls in using
+    the SAME sentence_indices scheme every other feature's occurrences use
+    (information_items.sentence_indices, an array -- see
+    lomb_metric_architecture_v1.md), not a separate coordinate system.
+    Before this function, there was no way to answer "which sentence does
+    this word belong to" at all.
+
+    Returns a flat list, one entry per word, in the exact same per-turn,
+    in-order sequence to_word_timestamp_windows() chunks from (so the
+    two can be lined up position-for-position when both are built from
+    the same target_turns list):
+        {
+            "word": "spreche", "start": 1.60, "end": 1.90,
+            "sentence_index": 3,     # position in to_sentences()' own list
+            "is_sentence_end": False,
+            "is_clause_end": False,
+        }
+
+    sentence_index alignment: matches to_sentences() position-for-position
+    IF both are computed from the same target_turns. A word is treated as
+    ending a sentence if it ends in . ? or ! (the same trigger
+    to_sentences()' regex split uses) OR if it's the last word of its turn
+    -- to_sentences() always closes out whatever's left in a turn as its
+    own sentence entry even without terminal punctuation (its per-turn
+    split never lets a "sentence" span two turns), so this function forces
+    the same boundary at every turn edge to stay in sync. If to_sentences()'
+    splitting approach ever changes (its own docstring already flags the
+    naive .?! split as a stub -- e.g. swapped for a real sentencizer), this
+    function's boundary rule must change with it or the two will silently
+    drift out of alignment.
+
+    is_clause_end is a heuristic, not a parser: a word is flagged if it
+    ends in a comma, OR if the very next word is one of CLAUSE_CONJUNCTIONS
+    above. This will both over- and under-flag real clause boundaries --
+    German clause structure isn't reducible to a fixed word list -- but
+    it's enough to distinguish "this pause landed at an obvious clause
+    break" from "this pause landed mid-clause" for reporting purposes, not
+    a claim of syntactic correctness. Never true at the same time as
+    is_sentence_end (a sentence boundary is reported as that, not also as
+    a clause boundary).
+    """
+    mapped: list[dict] = []
+    sentence_index = 0
+    for turn in target_turns:
+        words = turn.words
+        n = len(words)
+        for i, w in enumerate(words):
+            text = w.text.strip()
+            is_sentence_end = bool(re.search(r"[.?!]$", text)) or (i == n - 1)
+            is_clause_end = False
+            if not is_sentence_end:
+                next_text = words[i + 1].text.strip().rstrip(".,!?").lower()
+                is_clause_end = text.endswith(",") or next_text in CLAUSE_CONJUNCTIONS
+            mapped.append({
+                "word": w.text,
+                "start": w.start,
+                "end": w.end,
+                "sentence_index": sentence_index,
+                "is_sentence_end": is_sentence_end,
+                "is_clause_end": is_clause_end,
+            })
+            if is_sentence_end:
+                sentence_index += 1
+    return mapped
 
 
 def to_audio_turns(target_turns: list[Turn]) -> list[dict]:
@@ -314,11 +395,13 @@ def to_audio_turns(target_turns: list[Turn]) -> list[dict]:
 #     top of to_sentences(), same single-speaker source). No count assumption.
 #   GVT-2 -- input_kind "sentence", evaluates one speaker's self-corrections
 #     within a single clause. No count assumption.
-#   FORMULAIC -- input_kind "sentence" but actually "one candidate word/
-#     phrase + the sentence it appeared in," fed via
-#     to_formulaic_candidates() (also built on top of to_sentences()). Still
-#     just one speaker's own sentence per pair -- the candidate scan doesn't
-#     add a second speaker into the picture.
+#   FORMULAIC -- as of 2026-09-05 a deterministic regex computation, not an
+#     LLM-assisted metric at all (see prompts/formulaic.py and this
+#     module's find_formulaic_matches(), renamed from
+#     to_formulaic_candidates() the same day) -- built on top of
+#     to_sentences(), same single-speaker source. Still just one speaker's
+#     own sentence per match -- the regex scan doesn't add a second speaker
+#     into the picture.
 #   UNFILLED_PAUSE, FILLED_PAUSE -- both input_kind "word_timestamps" as of
 #     2026-09-03, both fed by to_word_timestamp_windows(): "a short window of
 #     consecutive ASR words... spoken by one person." Depends on turn-aware
@@ -380,7 +463,42 @@ if __name__ == "__main__":
     audio_turns = to_audio_turns(filtered)
     print(f"to_audio_turns() -> {audio_turns}\n")
 
-    # to_formulaic_candidates() self-test. Imported here, not at module
+    # map_words_to_sentences() self-test: sentence_index must line up
+    # exactly with to_sentences()' own list (same count, same order), and
+    # the known comma-clause structure in "Frueher, als ich Kind war,
+    # spiele ich gern Basketball." must actually get flagged.
+    word_sentence_map = map_words_to_sentences(filtered)
+    print(f"map_words_to_sentences() -> {len(word_sentence_map)} word(s):")
+    for m in word_sentence_map:
+        flags = []
+        if m["is_sentence_end"]:
+            flags.append("SENTENCE-END")
+        if m["is_clause_end"]:
+            flags.append("clause-end")
+        print(f"  [{m['sentence_index']}] {m['word']:<12} {' '.join(flags)}")
+
+    max_sentence_index = max(m["sentence_index"] for m in word_sentence_map)
+    assert max_sentence_index == len(sentences) - 1, (
+        f"map_words_to_sentences() sentence_index range (0..{max_sentence_index}) "
+        f"must match to_sentences()' {len(sentences)} sentences exactly"
+    )
+    frueher_comma = next(m for m in word_sentence_map if m["word"] == "Frueher,")
+    assert frueher_comma["is_clause_end"] and not frueher_comma["is_sentence_end"], (
+        "'Frueher,' should be flagged as a clause boundary (trailing comma "
+        "AND followed by the subordinating conjunction 'als'), not a sentence end"
+    )
+    war_comma = next(m for m in word_sentence_map if m["word"] == "war,")
+    assert war_comma["is_clause_end"] and not war_comma["is_sentence_end"], (
+        "'war,' should be flagged as a clause boundary (trailing comma), not a sentence end"
+    )
+    basketball_period = next(m for m in word_sentence_map if m["word"] == "Basketball.")
+    assert basketball_period["is_sentence_end"] and not basketball_period["is_clause_end"], (
+        "'Basketball.' ends the sentence, not just a clause"
+    )
+    print("\nmap_words_to_sentences() self-checks passed "
+          "(sentence_index alignment + real comma-clause detection).\n")
+
+    # find_formulaic_matches() self-test. Imported here, not at module
     # level, so this module never has a hard dependency on FORMULAIC's own
     # content -- only this __main__ self-proof needs a concrete BUNDLES list
     # to test against.
@@ -403,25 +521,25 @@ if __name__ == "__main__":
             Word("das", 11.1, 11.2), Word("stimmt", 11.2, 11.5), Word("schon.", 11.5, 11.8),
         ]),
     ]
-    formulaic_candidates = to_formulaic_candidates(formulaic_turns, BUNDLES)
-    print(f"to_formulaic_candidates() -> {len(formulaic_candidates)} pair(s):")
-    for c in formulaic_candidates:
-        print(f"  {c}")
-    assert any(c.startswith('Candidate: "verschiedene Sachen"') for c in formulaic_candidates), (
+    formulaic_matches = find_formulaic_matches(formulaic_turns, BUNDLES)
+    print(f"find_formulaic_matches() -> {len(formulaic_matches)} match(es):")
+    for m in formulaic_matches:
+        print(f"  {m}")
+    assert any(m["candidate"] == "verschiedene Sachen" for m in formulaic_matches), (
         "expected the corpus-confirmed candidate to be found"
     )
-    assert any(c.startswith('Candidate: "aber"') and "Ich koche" in c for c in formulaic_candidates), (
+    assert any(m["candidate"] == "aber" and "Ich koche" in m["sentence"] for m in formulaic_matches), (
         "expected the second candidate in the same sentence to also be found"
     )
-    aber_second_sentence = [c for c in formulaic_candidates if c.startswith('Candidate: "aber"') and "das stimmt" in c]
+    aber_second_sentence = [m for m in formulaic_matches if m["candidate"] == "aber" and "das stimmt" in m["sentence"]]
     assert len(aber_second_sentence) == 1, (
         f"expected sentence-initial capitalized 'Aber' to match and normalize to lowercase 'aber', got {aber_second_sentence}"
     )
-    ja_matches = [c for c in formulaic_candidates if c.startswith('Candidate: "ja"') and "das stimmt" in c]
+    ja_matches = [m for m in formulaic_matches if m["candidate"] == "ja" and "das stimmt" in m["sentence"]]
     assert len(ja_matches) == 1, (
-        f"expected repeated 'ja ja' in one sentence to dedup to a single pair, got {ja_matches}"
+        f"expected repeated 'ja ja' in one sentence to dedup to a single match, got {ja_matches}"
     )
-    print("\nto_formulaic_candidates() self-checks passed.\n")
+    print("\nfind_formulaic_matches() self-checks passed.\n")
 
     # Prove a filtered sentence plugs cleanly into an actual registered
     # prompt's request-building -- not just that this module runs, but

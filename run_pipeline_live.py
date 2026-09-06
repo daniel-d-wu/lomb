@@ -24,23 +24,35 @@ Usage:
   original 6-sentence sample, or a different file instead.
 
 2026-09-03: this script now runs and prints ALL 10 registered metrics, not
-8 -- GVT-1 (sentence-window), FORMULAIC (candidate-scan), and FILLED_PAUSE
-(word-timestamps, redefined off audio) all newly wired in the same day;
-see pipeline.py's own module docstring for the per-metric reasoning.
+8 -- GVT-1 (sentence-window), FORMULAIC (candidate-scan at the time), and
+FILLED_PAUSE (word-timestamps, redefined off audio) all newly wired in the
+same day; see pipeline.py's own module docstring for the per-metric
+reasoning.
+
+2026-09-05: FORMULAIC is no longer an LLM call at all -- per Dan's
+explicit instruction it's now a deterministic regex match against
+prompts/formulaic.py's BUNDLES list (see pipeline.py's REGEX_METRICS and
+find_formulaic_matches() in speaker_filter.py). It still runs and still
+prints below, just for free and instantly -- the cost/call-count estimate
+right below only covers the remaining 9 LLM-backed metrics now, and this
+script's own CANDIDATE_METRICS import was replaced with REGEX_METRICS to
+match (importing the old name would now fail outright, since pipeline.py
+doesn't export it anymore).
 
 What this actually costs, for sample_transcript_assemblyai_v3.json
 specifically: 16 sentences x 6 single-sentence metrics (minus whatever the
-pre-filter skips for GDD-1/GDD-2) + 14 GVT-1 sentence-windows + 2 FORMULAIC
-candidate/sentence pairs + 17 word-timestamp windows each for
-UNFILLED_PAUSE and FILLED_PAUSE = up to ~155 live API calls (exact counts
-per the FakeProvider structural smoke test run against this same file --
-see this project's changelog), all against gpt-5.6-luna with reasoning
-effort "none" on short inputs -- the same cheap-tier model already
-confirmed working for all 9 single-call metrics individually (FORMULAIC
-and FILLED_PAUSE's new/changed shapes have NOT yet been confirmed against
-a live call, only structurally). Should still be a small fraction of a
-dollar, but has not been separately priced out -- flagging that as
-unverified rather than promising a number.
+pre-filter skips for GDD-1/GDD-2) + 14 GVT-1 sentence-windows + 17
+word-timestamp windows each for UNFILLED_PAUSE and FILLED_PAUSE = up to
+~153 live API calls (2 fewer than before 2026-09-05's FORMULAIC change,
+since its matches no longer cost a call each; exact counts per the
+FakeProvider structural smoke test run against this same file -- see this
+project's changelog), all against gpt-5.6-luna with reasoning effort
+"none" on short inputs -- the same cheap-tier model already confirmed
+working for all 9 single-call metrics individually (FILLED_PAUSE's
+redefined shape has NOT yet been confirmed against a live call, only
+structurally). Should still be a small fraction of a dollar, but has not
+been separately priced out -- flagging that as unverified rather than
+promising a number.
 
 Writes the full result (every per-sentence/per-window answer, not just a
 pass/fail summary) to pipeline_result.json next to this script, so you can
@@ -56,7 +68,7 @@ from pipeline import (
     run_pipeline,
     SENTENCE_METRICS,
     WINDOWED_SENTENCE_METRICS,
-    CANDIDATE_METRICS,
+    REGEX_METRICS,
     WORD_TIMESTAMP_METRICS,
 )
 from providers.openai_provider import OpenAIProvider
@@ -80,9 +92,9 @@ def main() -> int:
     print(f"Model: {provider.model}")
     print(f"Running {len(SENTENCE_METRICS)} single-sentence metrics + "
           f"{len(WINDOWED_SENTENCE_METRICS)} sentence-window metric + "
-          f"{len(CANDIDATE_METRICS)} candidate-scan metric + "
-          f"{len(WORD_TIMESTAMP_METRICS)} word-timestamp metrics against "
-          f"speaker {TARGET_SPEAKER!r}'s turns...\n")
+          f"{len(WORD_TIMESTAMP_METRICS)} word-timestamp metrics (all against "
+          f"the live API) + {len(REGEX_METRICS)} regex metric (free, no API "
+          f"call) against speaker {TARGET_SPEAKER!r}'s turns...\n")
 
     result = run_pipeline(provider, transcript_json, target_speaker_id=TARGET_SPEAKER)
 
@@ -116,7 +128,7 @@ def main() -> int:
                 print(f"      corrected: {out['corrected']!r}")
         print()
 
-    print("--- FORMULAIC (candidate/sentence pairs) ---")
+    print("--- FORMULAIC (regex matches against BUNDLES -- no API call, per metric_key in REGEX_METRICS) ---")
     for entry in result["results"]["FORMULAIC"]:
         out = entry["output"]
         flag = out.get("formulaic")
@@ -124,7 +136,7 @@ def main() -> int:
         if out.get("reasoning"):
             print(f"      reasoning: {out['reasoning']}")
     if not result["results"]["FORMULAIC"]:
-        print("  (no BUNDLES candidates found in this transcript -- zero calls made, not an error)")
+        print("  (no BUNDLES matches found in this transcript -- not an error)")
     print()
 
     print("--- UNFILLED_PAUSE ---")

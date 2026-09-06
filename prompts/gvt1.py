@@ -19,6 +19,25 @@ present contrast example is illustrative (constructed to teach the
 negative case) since no validated real example of that specific pattern
 was available in the corpus at the time this was written -- replace it
 with a real one if/when the corpus documents one.
+
+2026-09-05 fix (Dan's own review): example 2's `corrected` field used to
+leave "wuerde ein paar Frauen mit mir nicht reden" untouched, producing a
+sentence that mixed an indicative past-perfect first clause ("...habe")
+with an unrelated subjunctive/conditional second clause ("wuerde...")
+sitting right next to it -- internally inconsistent-looking, exactly what
+Dan flagged ("you passed the correction with a konjunktiv II in the
+second clause which is not consistent with the first clause"). Root
+cause, confirmed against the actual source: the SAME transcript utterance
+(dan_error_analysis_master_v3.md, GVT pattern 1, Example 3, alicia_italki4)
+has a SECOND, independent error in that second clause -- "wuerde" is a
+confusion of German's subjunctive/conditional auxiliary with English
+"wouldn't" used for past-habitual refusal, not a tense-drift instance at
+all, so it was never something GVT-1's own rule was fixing in the first
+place. The example now uses the corpus's own real, fully natural
+correction for the whole utterance ("wollten ein paar Frauen nicht mit
+mir reden") instead of leaving the second clause's separate error sitting
+there unaddressed -- see that example's own `reasoning` field for why
+both clauses change, spelled out rather than left implicit.
 """
 
 from metric_types import MetricPromptConfig
@@ -45,8 +64,8 @@ FEW_SHOT_EXAMPLES = [
     {
         "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
         "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'damals' establishes a past frame, but 'spreche' is present tense -- should be 'gesprochen habe'.",
-                   "corrected": "weil ich damals kein Deutsch gesprochen habe, wuerde ein paar Frauen mit mir nicht reden."},
+                   "reasoning": "'damals' establishes a past frame, but 'spreche' is present tense -- should be 'gesprochen habe'. The second clause's 'wuerde ein paar Frauen mit mir nicht reden' is ALSO changed here, to 'wollten ein paar Frauen nicht mit mir reden' -- not itself a tense-drift instance (that's not what this metric checks), but a separate, real error in the same utterance: German 'wuerde' (subjunctive/conditional) was confused with English 'wouldn't' used for past-habitual refusal. Left as-is, it would sit as an unaddressed subjunctive/conditional form right next to an indicative past-perfect first clause -- an internally inconsistent-looking pair of moods. This is the real corpus correction for the full utterance (dan_error_analysis_master_v3.md, alicia_italki4), not a partial fix of only the tense-drift half.",
+                   "corrected": "weil ich damals kein Deutsch gesprochen habe, wollten ein paar Frauen nicht mit mir reden."},
     },
     {
         "input": "Vorher, spreche ich sehr wenig Deutsch, weil ich mache sehr wenig Uebung.",

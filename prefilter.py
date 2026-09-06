@@ -74,21 +74,20 @@ keyword filter for any of these):
   explicitly flagged "not exhaustive" -- a keyword filter built from it
   would quietly cut real coverage every time a transfer error uses a
   verb-preposition pair not in that illustrative list.
-- FORMULAIC (prompts/formulaic.py): 2026-09-03 UPDATE -- the BUNDLES
-  reference list this note used to say didn't exist now DOES exist (added
-  the same day, sourced from two web references plus the existing corpus
-  finding; see that module's own docstring). That doesn't make FORMULAIC a
-  candidate for THIS module, though: the reason isn't "no list to filter
-  on" anymore, it's that scanning sentences against BUNDLES to decide which
-  (candidate, sentence) pairs are even worth an LLM call IS the filtering
-  step for this metric -- it already happens in
-  speaker_filter.to_formulaic_candidates(), which is also where FORMULAIC's
-  real unit of work (a candidate/sentence pair, not a bare sentence) gets
-  built in the first place. Duplicating that scan here, keyed to a bare
-  sentence with no candidate attached, wouldn't fit this module's
-  should_run(metric_key, sentence) -> bool shape anyway. So FORMULAIC still
-  isn't in _PATTERNS below -- now because its filtering already lives
-  correctly upstream, not because nothing exists to filter with.
+- FORMULAIC (prompts/formulaic.py): moot as of 2026-09-05 -- FORMULAIC is
+  now a deterministic regex metric, not an LLM-assisted one at all (Dan's
+  explicit instruction; see prompts/formulaic.py's module docstring and
+  speaker_filter.find_formulaic_matches(), renamed from
+  to_formulaic_candidates() the same day). This module's whole job is
+  deciding whether an LLM call is worth making -- with no LLM call in
+  FORMULAIC's path anymore, "should we call the LLM for this sentence"
+  isn't a question that applies to it, so it was never a candidate for
+  _PATTERNS below in the first place under this new design, independent of
+  whether BUNDLES exists as a list to filter with (it does -- see that
+  module). Left as its own bullet here rather than deleted, since the
+  history (this note used to explain why FORMULAIC's own upstream
+  candidate-scan already served as its filtering step) is still useful
+  context for why this metric never shows up in should_run() at all.
 - STRUCTURE_BREADTH (prompts/structure_breadth.py): most of its 10 closed
   labels DO have a lexical cue (dass/ob/weil/damit for the four clause
   types, waere/haette/koennte/... for konjunktiv_ii, werden+participle for

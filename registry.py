@@ -1,5 +1,5 @@
 """
-Registry for all 10 LLM-assisted metrics.
+Registry for all 9 LLM-assisted metrics.
 
 This file now holds ONLY provider-agnostic content -- the lookup table
 mapping metric key -> (instruction text, few-shot examples, output
@@ -8,9 +8,20 @@ specific request format. That translation now lives in providers/ (see
 llm_provider.py for the interface every provider adapter implements).
 
 This split is what makes switching providers cheap: none of this file, and
-none of the 10 files in prompts/, need to change if you swap
+none of the 9 files in prompts/, need to change if you swap
 GeminiProvider for OpenAIProvider later. Only a new file in providers/
 would be needed.
+
+2026-09-05: FORMULAIC removed from this registry entirely, per Dan's
+explicit instruction to make it a deterministic regex metric instead of an
+LLM-assisted one. It's no longer imported here and has no CONFIG in
+prompts/formulaic.py anymore (that file now holds only the BUNDLES
+reference list -- see its own docstring). pipeline.py still computes and
+reports a FORMULAIC result, via speaker_filter.find_formulaic_matches()
+directly, with zero calls to classify()/this registry -- see pipeline.py's
+module docstring and its REGEX_METRICS group for that path. This dropped
+the metric count this file is responsible for from 10 to 9; the assertion
+below was updated to match, not silently loosened.
 """
 
 from metric_types import MetricPromptConfig  # noqa: F401 (re-exported for convenience)
@@ -23,7 +34,6 @@ from prompts.lpf import CONFIG as LPF_CONFIG
 from prompts.lp import CONFIG as LP_CONFIG
 from prompts.unfilled_pause import CONFIG as UNFILLED_PAUSE_CONFIG
 from prompts.filled_pause import CONFIG as FILLED_PAUSE_CONFIG
-from prompts.formulaic import CONFIG as FORMULAIC_CONFIG
 from prompts.structure_breadth import CONFIG as STRUCTURE_BREADTH_CONFIG
 
 METRIC_PROMPTS: dict[str, MetricPromptConfig] = {
@@ -35,11 +45,14 @@ METRIC_PROMPTS: dict[str, MetricPromptConfig] = {
     "LP": LP_CONFIG,
     "UNFILLED_PAUSE": UNFILLED_PAUSE_CONFIG,
     "FILLED_PAUSE": FILLED_PAUSE_CONFIG,
-    "FORMULAIC": FORMULAIC_CONFIG,
     "STRUCTURE_BREADTH": STRUCTURE_BREADTH_CONFIG,
 }
 
-assert len(METRIC_PROMPTS) == 10, "expected exactly 10 LLM-assisted metrics"
+assert len(METRIC_PROMPTS) == 9, "expected exactly 9 LLM-assisted metrics (FORMULAIC is regex-based now, not here)"
+assert "FORMULAIC" not in METRIC_PROMPTS, (
+    "FORMULAIC must not be re-registered as an LLM metric -- it's a deterministic "
+    "regex computation now (see prompts/formulaic.py and speaker_filter.find_formulaic_matches())"
+)
 
 
 def classify(provider, metric_key: str, input_data):
