@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lomb — Voice Enrollment</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 480px;
+    margin: 60px auto;
+    padding: 0 20px;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 20px; }
+  #status-line { color: #555; font-size: 14px; margin-bottom: 24px; }
+  #record-btn {
+    font-size: 16px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #2563eb;
+    color: white;
+  }
+  #record-btn.recording { background: #dc2626; }
+  #record-btn:disabled { background: #999; cursor: not-allowed; }
+  #timer { font-variant-numeric: tabular-nums; font-size: 14px; margin-left: 12px; }
+  #message { margin-top: 20px; font-size: 14px; white-space: pre-wrap; }
+  #message.error { color: #dc2626; }
+  #message.success { color: #15803d; }
+  #force-row { margin-top: 16px; font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+  <h1>Voice Enrollment (dev slice)</h1>
+  <div id="status-line">Checking enrollment status...</div>
+
+  <button id="record-btn">Start Recording</button>
+  <span id="timer"></span>
+
+  <div id="force-row" style="display:none;">
+    <label><input type="checkbox" id="force-checkbox"> Overwrite existing voiceprint (force)</label>
+  </div>
+
+  <div id="message"></div>
+
+<script>
+  const MIN_SECONDS = 8;
+
+  const recordBtn = document.getElementById('record-btn');
+  const timerEl = document.getElementById('timer');
+  const messageEl = document.getElementById('message');
+  const statusLine = document.getElementById('status-line');
+  const forceRow = document.getElementById('force-row');
+  const forceCheckbox = document.getElementById('force-checkbox');
+
+  let mediaRecorder = null;
+  let chunks = [];
+  let startTime = null;
+  let timerInterval = null;
+  let alreadyEnrolled = false;
+
+  function setMessage(text, kind) {
+    messageEl.textContent = text;
+    messageEl.className = kind || '';
+  }
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch('/status');
+      const data = await res.json();
+      alreadyEnrolled = !!data.enrolled;
+      if (alreadyEnrolled) {
+        statusLine.textContent = `A voiceprint is already on file (${data.sample_count} sample(s)).`;
+        forceRow.style.display = 'block';
+      } else {
+        statusLine.textContent = 'No voiceprint on file yet.';
+        forceRow.style.display = 'none';
+      }
+    } catch (e) {
+      statusLine.textContent = 'Could not reach /status.';
+    }
+  }
+
+  function elapsedSeconds() {
+    return (Date.now() - startTime) / 1000;
+  }
+
+  function updateTimer() {
+    const s = elapsedSeconds();
+    const remaining = MIN_SECONDS - s;
+    if (remaining > 0) {
+      timerEl.textContent = `${s.toFixed(1)}s (need ${remaining.toFixed(1)}s more)`;
+    } else {
+      timerEl.textContent = `${s.toFixed(1)}s (minimum reached)`;
+    }
+  }
+
+  async function startRecording() {
+    setMessage('', '');
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setMessage('Microphone access denied or unavailable: ' + e.message, 'error');
+      return;
+    }
+
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      handleRecordingStopped();
+    };
+
+    mediaRecorder.start();
+    startTime = Date.now();
+    recordBtn.textContent = 'Stop Recording';
+    recordBtn.classList.add('recording');
+    timerInterval = setInterval(updateTimer, 100);
+    updateTimer();
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    clearInterval(timerInterval);
+    recordBtn.textContent = 'Start Recording';
+    recordBtn.classList.remove('recording');
+  }
+
+  async function handleRecordingStopped() {
+    const finalElapsed = elapsedSeconds();
+    if (finalElapsed < MIN_SECONDS) {
+      setMessage(
+        `Recording was only ${finalElapsed.toFixed(1)}s -- need at least ${MIN_SECONDS}s. Please try again.`,
+        'error'
+      );
+      timerEl.textContent = '';
+      return;
+    }
+
+    const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+    await uploadRecording(blob);
+  }
+
+  async function uploadRecording(blob) {
+    recordBtn.disabled = true;
+    setMessage('Uploading...', '');
+
+    const formData = new FormData();
+    formData.append('recording', blob, 'enrollment.webm');
+
+    const force = forceCheckbox.checked;
+    const url = '/enroll' + (force ? '?force=true' : '');
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok) {
+        setMessage(data.message, 'success');
+      } else {
+        setMessage('Error: ' + data.error, 'error');
+      }
+    } catch (e) {
+      setMessage('Upload failed: ' + e.message, 'error');
+    } finally {
+      recordBtn.disabled = false;
+      timerEl.textContent = '';
+      refreshStatus();
+    }
+  }
+
+  recordBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  });
+
+  refreshStatus();
+</script>
+</body>
+</html>
