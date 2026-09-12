@@ -21,6 +21,7 @@ needing an opinion about which one.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 
@@ -45,19 +46,39 @@ def decode_audio_bytes(raw_bytes: bytes) -> np.ndarray:
     if not raw_bytes:
         raise AudioDecodeError("empty upload -- no audio data received")
 
-    with tempfile.NamedTemporaryFile(suffix=".bin") as src, tempfile.NamedTemporaryFile(suffix=".wav") as dst:
-        src.write(raw_bytes)
-        src.flush()
+    # Deliberately NOT `with tempfile.NamedTemporaryFile(...) as f: ...` --
+    # that keeps Python's own handle open for the file's whole lifetime,
+    # which is harmless on Linux/Mac (multiple handles to the same path are
+    # fine) but fails on Windows: a second process (ffmpeg) can't open a
+    # file Python still holds open, and ffmpeg -i / the output write both
+    # errored with "Permission denied" as a result. mkstemp() + closing our
+    # own handle immediately, before ffmpeg ever touches the path, avoids
+    # that -- cross-platform, not just a Linux workaround.
+    src_fd, src_path = tempfile.mkstemp(suffix=".bin")
+    dst_fd, dst_path = tempfile.mkstemp(suffix=".wav")
+    os.close(dst_fd)  # ffmpeg (-y) creates/overwrites this; we only needed the reserved name
+
+    try:
+        with os.fdopen(src_fd, "wb") as src:
+            src.write(raw_bytes)
+        # src's handle is now closed -- safe for ffmpeg to open on Windows too
+
         result = subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-i", src.name, "-ar", str(SAMPLE_RATE), "-ac", "1", dst.name],
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path, "-ar", str(SAMPLE_RATE), "-ac", "1", dst_path],
             capture_output=True,
         )
         if result.returncode != 0:
             raise AudioDecodeError(
                 f"ffmpeg could not decode the uploaded audio: {result.stderr.decode(errors='replace').strip()[:300]}"
             )
-        audio, sr = sf.read(dst.name, dtype="float32")
+        audio, sr = sf.read(dst_path, dtype="float32")
         assert sr == SAMPLE_RATE
+    finally:
+        for path in (src_path, dst_path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass  # best-effort cleanup -- a leaked temp file is not worth failing the request over
 
     if audio.ndim > 1:  # sf.read can hand back (n, channels) even for ac=1 in some containers -- collapse defensively
         audio = audio.mean(axis=1).astype(np.float32)
