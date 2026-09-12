@@ -31,26 +31,29 @@ reasoning.
 
 2026-09-05: FORMULAIC is no longer an LLM call at all -- per Dan's
 explicit instruction it's now a deterministic regex match against
-prompts/formulaic.py's BUNDLES list (see pipeline.py's REGEX_METRICS and
-find_formulaic_matches() in speaker_filter.py). It still runs and still
-prints below, just for free and instantly -- the cost/call-count estimate
-right below only covers the remaining 9 LLM-backed metrics now, and this
-script's own CANDIDATE_METRICS import was replaced with REGEX_METRICS to
-match (importing the old name would now fail outright, since pipeline.py
-doesn't export it anymore).
+prompts/formulaic.py's BUNDLES list (see pipeline.py's DIRECT_METRICS and
+find_formulaic_matches() in speaker_filter.py).
+
+2026-09-06: UNFILLED_PAUSE and FILLED_PAUSE moved off the LLM the same
+way -- both are now direct computations (direct_computation.py), zero API
+calls each. This script's CANDIDATE_METRICS import (already replaced with
+REGEX_METRICS the day before) is now DIRECT_METRICS.
+
+2026-09-07: WPM added -- the last of Phase 1's 11 Fluencemes, and never an
+LLM metric to begin with. DIRECT_METRICS now covers all four no-API-call
+metrics together. The cost/call-count estimate right below only covers the
+7 LLM-backed metrics.
 
 What this actually costs, for sample_transcript_assemblyai_v3.json
 specifically: 16 sentences x 6 single-sentence metrics (minus whatever the
-pre-filter skips for GDD-1/GDD-2) + 14 GVT-1 sentence-windows + 17
-word-timestamp windows each for UNFILLED_PAUSE and FILLED_PAUSE = up to
-~153 live API calls (2 fewer than before 2026-09-05's FORMULAIC change,
-since its matches no longer cost a call each; exact counts per the
-FakeProvider structural smoke test run against this same file -- see this
-project's changelog), all against gpt-5.6-luna with reasoning effort
-"none" on short inputs -- the same cheap-tier model already confirmed
-working for all 9 single-call metrics individually (FILLED_PAUSE's
-redefined shape has NOT yet been confirmed against a live call, only
-structurally). Should still be a small fraction of a dollar, but has not
+pre-filter skips for GDD-1/GDD-2) + 14 GVT-1 sentence-windows = up to
+~110 live API calls (down from ~153 before 2026-09-06's UNFILLED_PAUSE/
+FILLED_PAUSE change removed their word-timestamp-window calls entirely;
+exact counts per the FakeProvider structural smoke test run against this
+same file -- see this project's changelog), all against gpt-5.6-luna with
+reasoning effort "none" on short inputs -- the same cheap-tier model
+already confirmed working for all 7 remaining single-call metrics
+individually. Should still be a small fraction of a dollar, but has not
 been separately priced out -- flagging that as unverified rather than
 promising a number.
 
@@ -68,8 +71,7 @@ from pipeline import (
     run_pipeline,
     SENTENCE_METRICS,
     WINDOWED_SENTENCE_METRICS,
-    REGEX_METRICS,
-    WORD_TIMESTAMP_METRICS,
+    DIRECT_METRICS,
 )
 from providers.openai_provider import OpenAIProvider
 
@@ -91,17 +93,18 @@ def main() -> int:
     print(f"Transcript: {transcript_path}")
     print(f"Model: {provider.model}")
     print(f"Running {len(SENTENCE_METRICS)} single-sentence metrics + "
-          f"{len(WINDOWED_SENTENCE_METRICS)} sentence-window metric + "
-          f"{len(WORD_TIMESTAMP_METRICS)} word-timestamp metrics (all against "
-          f"the live API) + {len(REGEX_METRICS)} regex metric (free, no API "
-          f"call) against speaker {TARGET_SPEAKER!r}'s turns...\n")
+          f"{len(WINDOWED_SENTENCE_METRICS)} sentence-window metric (all "
+          f"against the live API) + {len(DIRECT_METRICS)} direct/"
+          f"deterministic metrics (free, no API call) against speaker "
+          f"{TARGET_SPEAKER!r}'s turns...\n")
 
     result = run_pipeline(provider, transcript_json, target_speaker_id=TARGET_SPEAKER)
 
     print(f"sentence_count:            {result['sentence_count']}")
     print(f"gvt1_window_count:         {result['gvt1_window_count']}")
-    print(f"window_count:              {result['window_count']}")
-    print(f"formulaic_candidate_count: {result['formulaic_candidate_count']}\n")
+    print(f"formulaic_candidate_count: {result['formulaic_candidate_count']}")
+    print(f"filled_pause_count:        {result['filled_pause_count']}")
+    print(f"unfilled_pause_count:      {result['unfilled_pause_count']}\n")
 
     for metric_key in SENTENCE_METRICS:
         print(f"--- {metric_key} ---")
@@ -128,7 +131,7 @@ def main() -> int:
                 print(f"      corrected: {out['corrected']!r}")
         print()
 
-    print("--- FORMULAIC (regex matches against BUNDLES -- no API call, per metric_key in REGEX_METRICS) ---")
+    print("--- FORMULAIC (regex matches against BUNDLES -- no API call, per metric_key in DIRECT_METRICS) ---")
     for entry in result["results"]["FORMULAIC"]:
         out = entry["output"]
         flag = out.get("formulaic")
@@ -139,21 +142,27 @@ def main() -> int:
         print("  (no BUNDLES matches found in this transcript -- not an error)")
     print()
 
-    print("--- UNFILLED_PAUSE ---")
+    print("--- UNFILLED_PAUSE (fixed-threshold gap check -- no API call) ---")
     for entry in result["results"]["UNFILLED_PAUSE"]:
-        words = [w["word"] for w in entry["input"]]
-        print(f"  window {words}")
-        for b in entry["output"]["boundaries"]:
-            marker = "  " if b["status"] == "trustworthy" else " SUSPECT ->"
-            print(f"    {marker} {b['between']}  {b['reasoning'] or ''}")
+        out = entry["output"]
+        print(f"  {entry['input']}  sentence_indices={out['sentence_indices']}  "
+              f"boundary_type={out['boundary_type']}")
+    if not result["results"]["UNFILLED_PAUSE"]:
+        print("  (no gaps over threshold found in this transcript -- not an error)")
     print()
 
-    print("--- FILLED_PAUSE ---")
+    print("--- FILLED_PAUSE (fixed hesitation-token lookup -- no API call) ---")
     for entry in result["results"]["FILLED_PAUSE"]:
-        words = [w["word"] for w in entry["input"]]
-        fillers = entry["output"].get("fillers", [])
-        marker = f" FLAGGED -> {fillers}" if fillers else ""
-        print(f"  window {words}{marker}")
+        out = entry["output"]
+        print(f"  {entry['input']}  sentence_indices={out['sentence_indices']}  "
+              f"boundary_type={out['boundary_type']}")
+    if not result["results"]["FILLED_PAUSE"]:
+        print("  (no filler tokens found in this transcript -- not an error)")
+    print()
+
+    print("--- WPM (session-level word/duration tally -- no API call) ---")
+    print(f"  word_count={result['word_count']}  duration_seconds={result['duration_seconds']}  "
+          f"wpm={result['wpm']}")
     print()
 
     print(f"structure_breadth_score: {result['structure_breadth_score']} "

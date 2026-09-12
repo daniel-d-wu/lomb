@@ -1,5 +1,5 @@
 """
-Registry for all 9 LLM-assisted metrics.
+Registry for all 7 LLM-assisted metrics.
 
 This file now holds ONLY provider-agnostic content -- the lookup table
 mapping metric key -> (instruction text, few-shot examples, output
@@ -8,7 +8,7 @@ specific request format. That translation now lives in providers/ (see
 llm_provider.py for the interface every provider adapter implements).
 
 This split is what makes switching providers cheap: none of this file, and
-none of the 9 files in prompts/, need to change if you swap
+none of the 7 files in prompts/, need to change if you swap
 GeminiProvider for OpenAIProvider later. Only a new file in providers/
 would be needed.
 
@@ -19,9 +19,16 @@ prompts/formulaic.py anymore (that file now holds only the BUNDLES
 reference list -- see its own docstring). pipeline.py still computes and
 reports a FORMULAIC result, via speaker_filter.find_formulaic_matches()
 directly, with zero calls to classify()/this registry -- see pipeline.py's
-module docstring and its REGEX_METRICS group for that path. This dropped
-the metric count this file is responsible for from 10 to 9; the assertion
-below was updated to match, not silently loosened.
+module docstring and its DIRECT_METRICS group for that path.
+
+2026-09-06: UNFILLED_PAUSE and FILLED_PAUSE removed from this registry too,
+same treatment -- both are now direct computations
+(direct_computation.compute_unfilled_pause() /
+compute_filled_pause()), with no CONFIG left in prompts/unfilled_pause.py
+or prompts/filled_pause.py (each now holds only its reference constant --
+see those files' own docstrings). This dropped the metric count this file
+is responsible for from 9 to 7; the assertion below was updated to match,
+not silently loosened.
 """
 
 from metric_types import MetricPromptConfig  # noqa: F401 (re-exported for convenience)
@@ -32,8 +39,6 @@ from prompts.gvt1 import CONFIG as GVT1_CONFIG
 from prompts.gvt2 import CONFIG as GVT2_CONFIG
 from prompts.lpf import CONFIG as LPF_CONFIG
 from prompts.lp import CONFIG as LP_CONFIG
-from prompts.unfilled_pause import CONFIG as UNFILLED_PAUSE_CONFIG
-from prompts.filled_pause import CONFIG as FILLED_PAUSE_CONFIG
 from prompts.structure_breadth import CONFIG as STRUCTURE_BREADTH_CONFIG
 
 METRIC_PROMPTS: dict[str, MetricPromptConfig] = {
@@ -43,16 +48,18 @@ METRIC_PROMPTS: dict[str, MetricPromptConfig] = {
     "GVT-2": GVT2_CONFIG,
     "LPF": LPF_CONFIG,
     "LP": LP_CONFIG,
-    "UNFILLED_PAUSE": UNFILLED_PAUSE_CONFIG,
-    "FILLED_PAUSE": FILLED_PAUSE_CONFIG,
     "STRUCTURE_BREADTH": STRUCTURE_BREADTH_CONFIG,
 }
 
-assert len(METRIC_PROMPTS) == 9, "expected exactly 9 LLM-assisted metrics (FORMULAIC is regex-based now, not here)"
-assert "FORMULAIC" not in METRIC_PROMPTS, (
-    "FORMULAIC must not be re-registered as an LLM metric -- it's a deterministic "
-    "regex computation now (see prompts/formulaic.py and speaker_filter.find_formulaic_matches())"
+assert len(METRIC_PROMPTS) == 7, (
+    "expected exactly 7 LLM-assisted metrics (FORMULAIC, UNFILLED_PAUSE, "
+    "FILLED_PAUSE are all direct computations now, not here)"
 )
+for _removed in ("FORMULAIC", "UNFILLED_PAUSE", "FILLED_PAUSE"):
+    assert _removed not in METRIC_PROMPTS, (
+        f"{_removed} must not be re-registered as an LLM metric -- it's a deterministic "
+        "direct computation now (see direct_computation.py / speaker_filter.find_formulaic_matches())"
+    )
 
 
 def classify(provider, metric_key: str, input_data):
@@ -76,11 +83,10 @@ if __name__ == "__main__":
 
     sample_inputs = {
         "sentence": "Ich lebe in die USA.",
-        "word_timestamps": [
-            {"word": "ich", "start": 1.20, "end": 1.35},
-            {"word": "denke", "start": 1.38, "end": 1.62},
-        ],
-        "audio_turn": "[placeholder -- real call needs an attached audio part, see prompts/filled_pause.py]",
+        # word_timestamps/audio_turn samples removed 2026-09-06: no
+        # remaining METRIC_PROMPTS entry uses either input_kind anymore
+        # (UNFILLED_PAUSE/FILLED_PAUSE moved to direct_computation.py;
+        # FORMULAIC moved off this registry entirely on 2026-09-05).
     }
 
     # 2026-09-03: OpenAI is now the primary/production provider (Dan's
@@ -92,7 +98,7 @@ if __name__ == "__main__":
     openai_ = OpenAIProvider()
     gemini = GeminiProvider()
 
-    # Prove build_request() works for all 10 metrics, on BOTH providers,
+    # Prove build_request() works for all 7 metrics, on BOTH providers,
     # from the exact same METRIC_PROMPTS content -- this is the actual
     # portability claim, demonstrated rather than just asserted.
     for key, config in METRIC_PROMPTS.items():

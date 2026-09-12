@@ -63,55 +63,47 @@ numbers):
   not-yet-built module that this LLM-assisted pipeline was never meant
   to cover. Left null with a coverage note, not estimated.
 
-- UNFILLED_PAUSE's raw result is surfaced but flagged, not reported as a
-  clean pause rate. See _summarize_unfilled_pause()'s own docstring for
-  why: a transcript with mechanically uniform, zero-gap word timestamps
-  (like the synthetic sample_transcript_assemblyai.json this was tested
-  against) makes the model flag nearly every boundary "suspect" for a
-  real, defensible reason -- real ASR output essentially never has
-  perfectly abutting timestamps between every consecutive word, so a
-  transcript that does looks artificial to the model, correctly. That's
-  a property of the INPUT DATA being synthetic, not a bug in the metric
-  or the pipeline.
+- UNFILLED_PAUSE is now surfaced as a plain occurrence count (see
+  _summarize_unfilled_pause()'s own docstring), not a rate -- word_count
+  isn't threaded through this pipeline yet (that's a `sessions`-table
+  field, per lomb_metric_architecture_v1.md, not something pipeline_result.
+  json carries today), so `unfilled_pause_rate` can't be computed here
+  without a number to divide by. Left as a raw count with a coverage note,
+  not estimated against a guessed denominator.
 
 - FORMULAIC and FILLED_PAUSE are not in ERROR_METRICS below and never
-  contribute to accuracy.errors[] -- neither was, before OR after
-  2026-09-03's wiring work, because claude/lomb_reporting_requirements_v1.
+  contribute to accuracy.errors[] -- claude/lomb_reporting_requirements_v1.
   md's own 6-metric error cap (GDD-1, GDD-2, GVT-1, GVT-2, LPF, LP) never
   included either of them; that's a reporting-scope decision, unrelated to
-  whether pipeline.py runs them. As of 2026-09-03 both DO run in
-  pipeline.py (FILLED_PAUSE redefined onto transcript word-timestamps --
-  see prompts/filled_pause.py for the full reasoning; FORMULAIC ran via an
-  LLM candidate-scan at the time, but see the very next paragraph for what
-  changed there two days later), so a fresh pipeline_result.json will have
-  "FORMULAIC" and "FILLED_PAUSE" keys with real per-match / per-window
-  output in them -- this file just doesn't surface either into the HTML
-  report yet, the same "not yet surfaced, not the same as zero found"
-  distinction this module already applies to everything else it hasn't
-  built a summarizer for. A pipeline_result.json produced before
-  2026-09-03 won't have those keys at all, and (like every other "metric
+  whether pipeline.py runs them. A fresh pipeline_result.json will have
+  "FORMULAIC" and "FILLED_PAUSE" keys with real per-occurrence output in
+  them -- this file just doesn't surface either into the HTML report yet,
+  the same "not yet surfaced, not the same as zero found" distinction this
+  module already applies to everything else it hasn't built a summarizer
+  for. A pipeline_result.json produced before each metric's own move to
+  this pipeline won't have that key at all, and (like every other "metric
   absent from results" case in this file) that still correctly reads as a
-  coverage note here, never a false "zero found." GVT-1 went through this
-  identical "not wired in" -> "wired in, not yet its own report section"
-  progression one step earlier the same day, via speaker_filter.
-  to_sentence_windows() -- it single-sentence-fed before that, which meant
-  it could never show the model both halves of a tense drift in one
-  request; GVT-1 IS one of the 6 ERROR_METRICS, so once it started
-  producing "GVT-1" keys with `corrected` fields, this file's existing
-  diff-and-card logic picked it up automatically, no separate summarizer
-  needed the way FORMULAIC/FILLED_PAUSE would.
+  coverage note here, never a false "zero found."
 
-- 2026-09-05: FORMULAIC's own output dict shape is UNCHANGED by its move
-  to a deterministic regex metric (still {"formulaic": bool, "confidence":
-  str, "reasoning": str} per entry -- see pipeline.py's REGEX_METRICS
-  handling), so nothing in this file needed to change for that switch;
-  this note exists only so a reader comparing a pre- and post-2026-09-05
-  pipeline_result.json's "FORMULAIC" entries isn't surprised to find them
-  structurally identical despite the computation behind them being
-  completely different (every entry's "confidence" is now always "high"
-  and "formulaic" is now always true, since a regex match no longer goes
-  through any disambiguation step -- see prompts/formulaic.py's own
-  docstring for that tradeoff).
+- 2026-09-05/2026-09-06: FORMULAIC, FILLED_PAUSE, and UNFILLED_PAUSE all
+  moved from LLM-assisted to direct/deterministic computation (see
+  pipeline.py's DIRECT_METRICS and direct_computation.py). FORMULAIC's own
+  output dict shape was UNCHANGED by its move (still {"formulaic": bool,
+  "confidence": str, "reasoning": str} per entry), so nothing in this file
+  needed to change for that switch. FILLED_PAUSE and UNFILLED_PAUSE's
+  shapes DID change -- both used to be one entry per word-timestamp
+  window (a {"boundaries": [...]} or {"fillers": [...]} list covering
+  every boundary/word checked in that window, flagged or not); both are
+  now one entry per actual occurrence found (a filler word, or a gap over
+  the fixed threshold), each carrying `sentence_indices` and
+  `boundary_type` fields neither had before (see direct_computation.py's
+  module docstring for why that granularity change was made, and
+  speaker_filter.map_words_to_sentences() for where those two new fields
+  come from). _summarize_unfilled_pause() below was rewritten for this new
+  shape -- a pipeline_result.json from before 2026-09-06 will have the OLD
+  {"boundaries": [...]} shape for UNFILLED_PAUSE, which this rewritten
+  function no longer reads; re-run the pipeline to get the new shape
+  rather than expecting old result files to still summarize correctly.
 """
 
 import difflib
@@ -181,43 +173,38 @@ def _summarize_structure_breadth(pipeline_result: dict) -> dict | None:
     }
 
 
-def _summarize_unfilled_pause(results: dict) -> dict | None:
-    """See module docstring's UNFILLED_PAUSE section for the full
-    reasoning. Short version: this counts trustworthy vs. suspect
-    boundaries and flags -- loudly -- when the suspect rate is high
-    enough that the result is more likely explained by unnaturally
-    uniform input timestamps than by real disfluency, so a report
-    consumer doesn't mistake a synthetic-data artifact for a real
-    finding about the speaker.
+def _summarize_unfilled_pause(pipeline_result: dict) -> dict | None:
+    """2026-09-06 rewrite for UNFILLED_PAUSE's new direct-computation shape
+    (see module docstring) -- one entry per flagged pause now, not one per
+    window covering every boundary. No more trustworthy-vs-suspect
+    breakdown to report (that verification step doesn't exist anymore,
+    see prompts/unfilled_pause.py's accuracy-tradeoff note); this is now a
+    plain count plus a boundary_type breakdown (how many of the flagged
+    pauses landed at a sentence boundary, a clause boundary, or mid-clause)
+    since that's real information direct_computation.compute_unfilled_
+    pause() now attaches to every occurrence.
+
+    Takes the whole pipeline_result (not just results) because the count
+    alone, with no session-level word_count to divide by yet, isn't worth
+    turning into a rate here -- see module docstring's UNFILLED_PAUSE note.
     """
+    results = pipeline_result.get("results", {})
     if "UNFILLED_PAUSE" not in results:
         return None
-    all_boundaries = []
-    for entry in results["UNFILLED_PAUSE"]:
-        if entry["output"]:
-            all_boundaries.extend(entry["output"].get("boundaries", []))
-    if not all_boundaries:
-        return {"boundaryCount": 0, "suspectCount": 0, "reliable": None}
-    suspect = [b for b in all_boundaries if b["status"] == "suspect"]
-    suspect_rate = len(suspect) / len(all_boundaries)
+    occurrences = [e["output"] for e in results["UNFILLED_PAUSE"] if e["output"]]
+    by_boundary = {"sentence": 0, "clause": 0, "none": 0}
+    for out in occurrences:
+        by_boundary[out.get("boundary_type", "none")] += 1
     return {
-        "boundaryCount": len(all_boundaries),
-        "suspectCount": len(suspect),
-        "suspectRate": round(suspect_rate, 3),
-        # Real ASR output essentially never has EVERY consecutive word
-        # boundary flagged suspect -- that pattern is the model correctly
-        "reliable": suspect_rate < 0.5,
-        "note": (
-            "Over half of all word boundaries were flagged 'suspect' -- this "
-            "almost always means the input timestamps were mechanically "
-            "uniform (as in a synthetic test transcript), not that the "
-            "speaker actually paused unnaturally often. Treat this run's "
-            "pause data as a pipeline-wiring check, not a real fluency "
-            "finding, until it's re-run against real ASR output."
-            if suspect_rate >= 0.5 else
-            "Suspect rate is low enough to plausibly reflect real timestamp "
-            "quality rather than a uniform-input artifact -- still worth a "
-            "spot check against real ASR output before trusting it fully."
+        "pauseCount": pipeline_result.get("unfilled_pause_count", len(occurrences)),
+        "byBoundaryType": by_boundary,
+        "_coverage_note": (
+            "Raw count only -- no rate yet, since word_count isn't part of "
+            "this pipeline's output (that's a sessions-table field per "
+            "lomb_metric_architecture_v1.md, not computed here). No ASR-"
+            "boundary trustworthiness check is performed as of 2026-09-06 "
+            "(see prompts/unfilled_pause.py) -- a mis-timed ASR boundary "
+            "could still inflate or hide a real pause."
         ),
     }
 
@@ -228,18 +215,23 @@ def build_report(pipeline_result: dict) -> dict:
         "session": {
             "targetSpeakerId": pipeline_result.get("target_speaker_id"),
             "sentenceCount": pipeline_result.get("sentence_count"),
-            "windowCount": pipeline_result.get("window_count"),
+            # windowCount removed 2026-09-06: UNFILLED_PAUSE/FILLED_PAUSE no
+            # longer use word-timestamp windows (direct computation scans
+            # words directly) -- see pipeline.py's run_pipeline() docstring.
         },
         "fluency": {
-            "wpm": None,
+            "wpm": pipeline_result.get("wpm"),
             "ohRate": None,
             "ahRate": None,
             "_coverage_note": (
-                "Not computed by this pipeline -- these are Python-logic "
-                "metrics (see claude/lomb_metric_definitions_v1.md), a "
-                "separate module not yet built."
+                "ohRate/ahRate are Python-logic metrics, not yet computed by "
+                "this pipeline (see claude/lomb_metric_definitions_v1.md). "
+                "wpm IS computed as of 2026-09-07 (direct_computation."
+                "compute_wpm()) -- but it's a convenience value derived "
+                "here, not yet a real Metric Aggregator's stored output; "
+                "None if this session had zero speaking time."
             ),
-            "unfilledPause": _summarize_unfilled_pause(results),
+            "unfilledPause": _summarize_unfilled_pause(pipeline_result),
         },
         "accuracy": _build_accuracy(results),
         "complexity": {
@@ -330,13 +322,23 @@ def render_html(report: dict) -> str:
 
     up = fluency.get("unfilledPause")
     if up:
+        by_boundary = up.get("byBoundaryType", {})
         up_html = f"""
-        <p>{up['boundaryCount']} word boundaries checked, {up.get('suspectCount', 0)} flagged suspect
-        ({up.get('suspectRate', 0) * 100:.0f}%).</p>
-        <p class="{'warn' if up.get('reliable') is False else ''}">{escape(up.get('note', ''))}</p>
+        <p><strong>{up['pauseCount']}</strong> unfilled pause(s) found
+        (sentence boundary: {by_boundary.get('sentence', 0)},
+        clause boundary: {by_boundary.get('clause', 0)},
+        mid-clause: {by_boundary.get('none', 0)}).</p>
+        <p class="notice">{escape(up.get('_coverage_note', ''))}</p>
         """
     else:
         up_html = "<p><em>Not run this session.</em></p>"
+
+    wpm_value = fluency.get("wpm")
+    wpm_html = (
+        f"<p>Speed: <strong>{wpm_value}</strong> words per minute.</p>"
+        if wpm_value is not None else
+        "<p><em>Not available (zero speaking time detected this session).</em></p>"
+    )
 
     sb = complexity.get("structureBreadth")
     if sb:
@@ -368,15 +370,16 @@ ul.coverage {{ font-size: .85rem; color: #555; }}
 Coverage is partial -- see the notes under each section for exactly what is and isn't included yet.</p>
 
 <p>Speaker: <strong>{escape(str(session['targetSpeakerId']))}</strong> &middot;
-{session['sentenceCount']} sentences &middot; {session['windowCount']} timestamp windows analyzed.</p>
+{session['sentenceCount']} sentences analyzed.</p>
 
 <h2>Accuracy — flagged errors</h2>
 {error_cards}
 <ul class="coverage">{coverage_items}</ul>
 
-<h2>Fluency — unfilled pauses</h2>
+<h2>Fluency — speed &amp; unfilled pauses</h2>
+{wpm_html}
 {up_html}
-<p class="notice">WPM and hesitation ("oh"/"ah") rates are not shown here — they come from a
+<p class="notice">Hesitation ("oh"/"ah") rates are not shown here — they come from a
 separate, not-yet-built module.</p>
 
 <h2>Complexity — sentence structure breadth</h2>
