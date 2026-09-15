@@ -119,12 +119,19 @@ in providers/openai_provider.py and elsewhere) -- see the __main__ block
 and its FakeProvider for exactly what that block does and doesn't prove.
 """
 
-import prefilter
-from assemblyai_adapter import from_assemblyai_transcript
-from direct_computation import compute_filled_pause, compute_unfilled_pause, compute_wpm
+import sys
+from pathlib import Path
+
+# repo root on sys.path -- prompts/ and transcript_processing/ are both
+# siblings of this file's own new directory (pipeline/) post-reorg.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from pipeline import prefilter
+from pipeline.direct_computation import compute_filled_pause, compute_unfilled_pause, compute_wpm
 from prompts.formulaic import BUNDLES as FORMULAIC_BUNDLES
-from registry import METRIC_PROMPTS, classify
-from speaker_filter import (
+from pipeline.registry import METRIC_PROMPTS, classify
+from transcript_processing.assemblyai_adapter import from_assemblyai_transcript
+from transcript_processing.speaker_filter import (
     filter_to_target_speaker,
     find_formulaic_matches,
     to_sentences,
@@ -422,7 +429,11 @@ if __name__ == "__main__":
             return {"error": False, "confidence": "high",
                     "reasoning": "FakeProvider -- orchestration test only, not a real judgment."}
 
-    with open("sample_transcript_assemblyai.json", "r", encoding="utf-8") as f:
+    # sample_transcript_assemblyai_v3.json lives in data/ since the
+    # 2026-09 reorg; was a bare relative "sample_transcript_assemblyai.json"
+    # (no _v3, and not actually present anywhere but archive/) before that.
+    SAMPLE_TRANSCRIPT = Path(__file__).resolve().parent.parent / "data" / "sample_transcript_assemblyai_v3.json"
+    with open(SAMPLE_TRANSCRIPT, "r", encoding="utf-8") as f:
         transcript_json = json.load(f)
 
     provider = FakeProvider()

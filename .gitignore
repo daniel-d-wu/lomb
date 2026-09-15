@@ -29,3 +29,5 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+voiceprints_dev.sqlite
+scripts/voiceprints_dev.sqlite

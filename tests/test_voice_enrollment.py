@@ -9,12 +9,17 @@ Run: python -m pytest test_voice_enrollment.py -v
   (or just: python test_voice_enrollment.py)
 """
 
+import sys
 import tempfile
 from pathlib import Path
 
 import numpy as np
 
-from voice_enrollment import (
+# repo root on sys.path -- voice_enrollment.py moved into voice_enrollment/
+# post-reorg, a sibling of this file's own new directory (tests/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from voice_enrollment.voice_enrollment import (
     MIN_ACTIVE_ENROLLMENT_SECONDS,
     SAMPLE_RATE,
     SpeakerAudio,

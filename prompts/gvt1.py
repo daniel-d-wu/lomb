@@ -40,7 +40,14 @@ there unaddressed -- see that example's own `reasoning` field for why
 both clauses change, spelled out rather than left implicit.
 """
 
-from metric_types import MetricPromptConfig
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (prompts/), not on the path by default.
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig
 
 SYSTEM_INSTRUCTION = """You are checking a short sequence of German clauses (in the order they were spoken) for ONE error type: tense drift -- a past narrative frame established in one clause that incorrectly reverts to present tense in a later clause.
 

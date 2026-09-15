@@ -66,8 +66,13 @@ this is the point of the whole exercise, not just "did it run."
 import json
 import os
 import sys
+from pathlib import Path
 
-from pipeline import (
+# repo root on sys.path -- pipeline.py moved into pipeline/ post-reorg, a
+# sibling of this file's own new directory (scripts/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from pipeline.pipeline import (
     run_pipeline,
     SENTENCE_METRICS,
     WINDOWED_SENTENCE_METRICS,
@@ -76,7 +81,10 @@ from pipeline import (
 from providers.openai_provider import OpenAIProvider
 
 TARGET_SPEAKER = "A"  # the learner, per the transcript's own dialogue
-DEFAULT_TRANSCRIPT = "sample_transcript_assemblyai_v3.json"
+# data/ since the 2026-09 reorg -- was a bare relative filename (cwd-
+# dependent, not actually "next to this script" despite what older
+# comments here claimed) before that.
+DEFAULT_TRANSCRIPT = Path(__file__).resolve().parent.parent / "data" / "sample_transcript_assemblyai_v3.json"
 
 
 def main() -> int:
@@ -85,7 +93,7 @@ def main() -> int:
         print('Windows cmd.exe:  set OPENAI_API_KEY=sk-...')
         return 1
 
-    transcript_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TRANSCRIPT
+    transcript_path = sys.argv[1] if len(sys.argv) > 1 else str(DEFAULT_TRANSCRIPT)
     with open(transcript_path, "r", encoding="utf-8") as f:
         transcript_json = json.load(f)
 
@@ -168,9 +176,13 @@ def main() -> int:
     print(f"structure_breadth_score: {result['structure_breadth_score']} "
           f"(labels: {result['structure_breadth_labels']})")
 
-    with open("pipeline_result.json", "w", encoding="utf-8") as f:
+    # data/ -- same canonical location as the sample transcript above, not
+    # scripts/ (where this script itself now lives) and not whatever the
+    # caller's cwd happens to be.
+    result_path = Path(__file__).resolve().parent.parent / "data" / "pipeline_result.json"
+    with open(result_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
-    print("\nFull result written to pipeline_result.json")
+    print(f"\nFull result written to {result_path}")
 
     return 0
 

@@ -16,7 +16,14 @@ teach the ambiguous-verb case explicitly), not pulled from a transcript --
 flagged here so it's not mistaken for corpus data.
 """
 
-from metric_types import MetricPromptConfig
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (prompts/), not on the path by default.
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig
 
 # Fixed, closed vocabulary -- same rationale as ALWAYS_DATIVE_PREPOSITIONS
 # in prompts/gdd1.py: exposed as a constant (mirroring STRUCTURE_LABELS in

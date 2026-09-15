@@ -32,7 +32,14 @@ error: false, with the reasoning spelling out how to tell the two "ich"s
 apart.
 """
 
-from metric_types import MetricPromptConfig
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (prompts/), not on the path by default.
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig
 
 SYSTEM_INSTRUCTION = """You are checking ONE German clause for ONE error type: verb order.
 

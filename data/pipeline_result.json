@@ -1,0 +1,3744 @@
+{
+  "target_speaker_id": "A",
+  "sentence_count": 16,
+  "gvt1_window_count": 14,
+  "window_count": 17,
+  "formulaic_candidate_count": 2,
+  "results": {
+    "GDD-1": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'seit' governs 'ein paar Monaten', which is correctly dative plural.",
+          "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner."
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'mit' governs the plural noun phrase 'die Leute'. Dative plural requires 'den Leuten'.",
+          "corrected": "Trotzdem kann ich nicht mit den Leuten sprechen."
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'nach' governs 'Köln', a place name that does not take an article; there is no dative article error.",
+          "corrected": "Ich mache ein Urlaub in Hamburg und nach Koeln."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence contains no always-dative preposition from the specified list. 'mit' governs 'mir', which is correctly dative, but the sentence is otherwise outside the requested error type.",
+          "corrected": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'für' is not one of the always-dative prepositions being checked, so no relevant case error is present.",
+          "corrected": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The sentence contains 'zum' (zu + dem), which correctly governs the neuter noun 'Üben' in the dative. No wrong case after an always-dative preposition is present.",
+          "corrected": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben."
+        }
+      }
+    ],
+    "GDD-2": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'war' describes a location, so the dative is required after 'in'. For the neuter noun 'Krankenhaus', this is 'im Krankenhaus', not 'in die Krankenhaus'.",
+          "corrected": "Wie viele Tage war ich im Krankenhaus?"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'leben' describes a static location, so the dative is required after 'in': 'den USA', not accusative 'die USA'.",
+          "corrected": "Ich lebe in den USA."
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The sentence contains no Wechselpräposition governing the relevant phrase. 'in Hamburg' is a location phrase, but 'in' is not followed by an incorrectly marked article or adjective; 'nach Köln' is not a Wechselpräposition.",
+          "corrected": "Ich mache ein Urlaub in Hamburg und nach Koeln."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence contains no Wechselpräposition phrase whose case can be evaluated. 'auf Deutsch' is a fixed manner expression, not a location or destination phrase.",
+          "corrected": "dann wir sehen, wie lange wir auf Deutsch reden."
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": true,
+        "output": null
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": true,
+        "output": null
+      }
+    ],
+    "GVT-2": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first, so no V2 inversion is required. The finite verb 'suche' is correctly in second position.",
+          "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner."
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with no fronted element other than the subject, and the finite verb 'kann' is correctly in second position. The sentence has a case error ('mit den Leuten'), but that is outside the requested verb-order error type.",
+          "corrected": "Trotzdem kann ich nicht mit die Leute sprechen."
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first, so the finite verb 'koche' is correctly in second position. There is no verb-order error.",
+          "corrected": "Ich koche gern verschiedene Sachen."
+        }
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The subordinate clause introduced by 'wie' has the finite verb 'soll' at the end. The hesitations and restart do not create a verb-order error.",
+          "corrected": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll."
+        }
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The sentence is a main clause with the subject 'Ich' first, so the finite verb 'sage' is correctly in second position.",
+          "corrected": "Ich sage dir ein Beispiel."
+        }
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a question with the finite verb 'war' in second position, so there is no verb-order error. The case/article phrase is not evaluated.",
+          "corrected": "Wie viele Tage war ich in die Krankenhaus?"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first, so no verb-order error is present. The finite verb 'lebe' is correctly in second position.",
+          "corrected": "Ich lebe in die USA."
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The sentence is a main clause with the fronted element 'dann'; the finite verb 'kommt' correctly appears in second position before the subject 'letztes Jahr'.",
+          "corrected": "und dann kommt letztes Jahr."
+        }
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first, so no V2 inversion issue applies. The finite verb 'mache' is correctly in second position.",
+          "corrected": "Ich mache ein Urlaub in Hamburg und nach Koeln."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The main clause begins with the fronted element 'fruher', so the finite verb must come before the subject. 'spiele' follows 'ich' instead of preceding it.",
+          "corrected": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme."
+        }
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "In the subordinate weil-clause, the finite verb 'spreche' must be at the end. The corrected clause is 'weil ich damals kein Deutsch sprach'; however, only verb order may be changed, so the verb is moved to the end without changing its form.",
+          "corrected": "weil ich damals kein Deutsch, wuerde ein paar Frauen mit mir nicht reden spreche."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'Dann' is a fronted element, so the finite verb must come before the subject: 'Dann sehen wir'.",
+          "corrected": "dann sehen wir, wie lange wir auf Deutsch reden."
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'manchmal' is fronted in the second clause, so the finite verb must come before the subject: 'manchmal ist es ein Vorteil.'",
+          "corrected": "manchmal gibt es Problem, manchmal ist es ein Vorteil."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "This is a main clause with the subject first, so no fronted-element inversion is required. The finite verb 'suche' is correctly in second position.",
+          "corrected": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The subordinate dass-clause has the finite verb 'gehe' at the end. No verb-order error is present.",
+          "corrected": "Ich freue mich fuer diese Reise, dass ich bald gehe."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The subordinate clause introduced by 'wenn' correctly places the finite verb 'haette' at the end.",
+          "corrected": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben."
+        }
+      }
+    ],
+    "LPF": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'suchen' correctly governs 'nach' here, and 'nach einem Tandempartner' is grammatically correct.",
+          "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner."
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The preposition 'mit' is correctly governed by 'sprechen' here, but the following case is incorrect ('mit den Leuten'). This is a case error, not the specified English-transfer preposition error type.",
+          "corrected": "Trotzdem kann ich nicht mit die Leute sprechen."
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The verb 'kochen' does not govern a potentially English-transferred preposition here; the sentence contains no relevant preposition error.",
+          "corrected": "Ich koche gern verschiedene Sachen."
+        }
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No specific verb-governed preposition error is present in this sentence.",
+          "corrected": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll."
+        }
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "'sagen' correctly takes a dative recipient ('dir') and an accusative object ('ein Beispiel') without a preposition.",
+          "corrected": "Ich sage dir ein Beispiel."
+        }
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The verb 'sein' with a location takes 'in' plus the dative for a stationary location, so 'in die Krankenhaus' must be 'im Krankenhaus'.",
+          "corrected": "Wie viele Tage war ich im Krankenhaus?"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'leben' with a location takes 'in' plus the dative for a static location: 'in den USA', not the accusative 'in die USA'.",
+          "corrected": "Ich lebe in den USA."
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "There is no confidently identifiable verb-governed preposition error in this sentence. The verb 'kommt' does not clearly govern a preposition here, and the sentence is disfluent/ambiguous.",
+          "corrected": "und dann kommt letztes Jahr."
+        }
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The verb 'machen' does not govern a preposition here; the issue is the noun phrase 'ein Urlaub' and the coordination, not a verb-governed preposition error. However, 'nach Köln' is correctly governed by the implied travel verb. Since the target error type is not present, the sentence should be unchanged.",
+          "corrected": "Ich mache ein Urlaub in Hamburg und nach Koeln."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No preposition governed by a verb is present, so there is no error of the specified type.",
+          "corrected": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme."
+        }
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The verb 'sprechen' governs 'mit' when meaning 'to speak with someone'; the sentence uses 'mit mir' correctly. However, 'reden' also governs 'mit', and it is correctly used as 'mit mir'. There is no wrong preposition of the specified type. The apparent issue is verb tense/word order, which is outside scope.",
+          "corrected": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence is disfluent, and it is unclear which verb, if any, governs the preposition 'auf'. Therefore no confident preposition-transfer error can be identified.",
+          "corrected": "dann wir sehen, wie lange wir auf Deutsch reden."
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "No confidently identifiable verb-governed preposition error is present. The sentence has other possible grammar issues, but they are outside the requested error type.",
+          "corrected": "manchmal gibt es Problem, manchmal es ist ein Vorteil."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'suchen' governs 'nach', not 'für'; the object should be dative plural: 'nach Muttersprachlern'.",
+          "corrected": "Ich suche nach Muttersprachlern, um mein Deutsch zu verbessern."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'sich freuen auf' is used for an upcoming event, so 'fuer' is incorrect here.",
+          "corrected": "Ich freue mich auf diese Reise, dass ich bald gehe."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No preposition governed by a verb is used incorrectly here. 'Zeit haben' is correct, and 'zum Üben' is a contraction of 'zu dem Üben', not an error of the targeted type.",
+          "corrected": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben."
+        }
+      }
+    ],
+    "LP": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "„nach einem Tandempartner suchen“ is a natural German collocation.",
+          "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner."
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The phrase contains a grammatical case error ('mit die Leute' should be 'mit den Leuten'), not a wrong collocate or chunk. This error type is therefore not flagged.",
+          "corrected": "Trotzdem kann ich nicht mit die Leute sprechen."
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "„verschiedene Sachen kochen“ is a natural German collocation; no wrong collocate or chunk is present.",
+          "corrected": "Ich koche gern verschiedene Sachen."
+        }
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The phrase is natural German; there is no wrong collocation or chunk.",
+          "corrected": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll."
+        }
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'ein Beispiel sagen' is not the natural German collocation; native speakers say 'ein Beispiel geben' or 'ein Beispiel nennen'.",
+          "corrected": "Ich gebe dir ein Beispiel."
+        }
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No wrong collocate or chunk is present. The sentence has grammatical errors ('in die Krankenhaus' should be 'im Krankenhaus'), but those are outside the specified error type.",
+          "corrected": "Wie viele Tage war ich in die Krankenhaus?"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The phrase has a case/preposition error ('in die USA' should be 'in den USA'), which is grammatical rather than a wrong-collocate error. Therefore it is not flagged here.",
+          "corrected": "Ich lebe in die USA."
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "The phrase is grammatically natural; “dann kommt letztes Jahr” can be used to introduce the next point in a narrative or sequence. No clear wrong collocation is present.",
+          "corrected": "und dann kommt letztes Jahr."
+        }
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'Urlaub machen' is a natural collocation, but the phrase requires the uncountable form 'Urlaub', not 'ein Urlaub'. Also, 'nach Köln' is natural for the destination. The corrected sentence is 'Ich mache Urlaub in Hamburg und in Köln.'",
+          "corrected": "Ich mache Urlaub in Hamburg und in Köln."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "There is no clear wrong collocation or chunk. The sentence has other possible issues, such as tense and capitalization, but those are outside the specified error type.",
+          "corrected": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme."
+        }
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'kein Deutsch sprechen' is a natural collocation, but 'ein paar Frauen mit mir nicht reden' is not the natural word combination here. Native speakers would say 'ein paar Frauen wollten nicht mit mir reden' (or 'redeten nicht mit mir'). Also, because the sentence refers to the past, 'sprach' is needed; this is a tense/grammar correction, not the target error type, so it is left unchanged.",
+          "corrected": "weil ich damals kein Deutsch spreche, wuerden ein paar Frauen nicht mit mir reden."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "The chunk 'wie lange wir auf Deutsch reden' is not the natural collocation for speaking a language. Native speakers say 'wie lange wir Deutsch sprechen'.",
+          "corrected": "dann wir sehen, wie lange wir Deutsch sprechen."
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "The sentence contains grammatical errors ('Problem' should be plural and the second clause needs 'ist es'), but no clear wrong collocate or chunk of the specified type. Therefore it is not flagged.",
+          "corrected": "manchmal gibt es Problem, manchmal es ist ein Vorteil."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'für Muttersprachler suchen' is not a natural collocation for this meaning. A native speaker would say 'Ich suche Muttersprachler', with the object in the accusative.",
+          "corrected": "Ich suche Muttersprachler, um mein Deutsch zu verbessern."
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'sich für eine Reise freuen' is not the natural collocation for looking forward to a trip; native speakers say 'sich auf eine Reise freuen'.",
+          "corrected": "Ich freue mich auf diese Reise, dass ich bald gehe."
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No wrong collocation or chunk is present. “mehr Zeit haben zum Üben” is a natural German expression; the sentence is unchanged apart from the user’s spelling conventions.",
+          "corrected": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben."
+        }
+      }
+    ],
+    "STRUCTURE_BREADTH": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich sage dir ein Beispiel.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "konjunktiv_ii",
+            "weil_clause"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "none"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "dass_clause"
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": "Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "structures": [
+            "konjunktiv_ii"
+          ],
+          "confidence": "high"
+        }
+      }
+    ],
+    "GVT-1": [
+      {
+        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner. Trotzdem kann ich nicht mit die Leute sprechen. Ich koche gern verschiedene Sachen.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No past-tense verb or past-time marker establishes a past narrative frame. The clauses are in the present tense, so there is no tense reversion to flag.",
+          "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner. Trotzdem kann ich nicht mit die Leute sprechen. Ich koche gern verschiedene Sachen."
+        }
+      },
+      {
+        "input": "Trotzdem kann ich nicht mit die Leute sprechen. Ich koche gern verschiedene Sachen. Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "No clear past-tense frame or past-time marker is established in this sequence. The present-tense clauses may be a consistent present-tense narration, so no actual reversion can be identified.",
+          "corrected": "Trotzdem kann ich nicht mit die Leute sprechen. Ich koche gern verschiedene Sachen. Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll."
+        }
+      },
+      {
+        "input": "Ich koche gern verschiedene Sachen. Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll. Ich sage dir ein Beispiel.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No past-tense verb or past-time marker establishes a past narrative frame. The clauses consistently use present tense, so there is no tense reversion.",
+          "corrected": "Ich koche gern verschiedene Sachen. Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll. Ich sage dir ein Beispiel."
+        }
+      },
+      {
+        "input": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll. Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus?",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No tense drift: the sequence begins with present-tense framing ('ich weiss', 'sagen soll', 'Ich sage'), and the later past-tense question ('war ich') does not revert from an established past frame.",
+          "corrected": "Ich, aeh, ich weiss nicht genau, aehm, wie ich das sagen soll. Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus?"
+        }
+      },
+      {
+        "input": "Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich lebe in die USA.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'war' establishes a past frame in the question, but the following clause uses present tense ('lebe') while continuing the same narrative about the speaker's situation. The drifted verb should be past tense ('lebte').",
+          "corrected": "Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich lebte in die USA."
+        }
+      },
+      {
+        "input": "Wie viele Tage war ich in die Krankenhaus? Ich lebe in die USA. und dann kommt letztes Jahr.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'war' establishes a past frame, but the later clause 'Ich lebe in die USA' reverts to present tense while continuing the narrative. 'kommt' is also present tense after 'dann' and should be past to match the established frame.",
+          "corrected": "Wie viele Tage war ich in die Krankenhaus? Ich lebte in die USA. und dann kam letztes Jahr."
+        }
+      },
+      {
+        "input": "Ich lebe in die USA. und dann kommt letztes Jahr. Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'letztes Jahr' establishes a past-time frame for the following vacation narrative, but 'mache' reverts to present tense and should be past tense. The earlier 'lebe' is outside that past frame and is not drifted.",
+          "corrected": "Ich lebe in die USA. und dann kommt letztes Jahr. Ich machte ein Urlaub in Hamburg und nach Koeln."
+        }
+      },
+      {
+        "input": "und dann kommt letztes Jahr. Ich mache ein Urlaub in Hamburg und nach Koeln. fruher, als ich Kind war, spiele ich gern Basketball und schwimme.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'letztes Jahr' and 'fruher, als ich Kind war' establish past frames, but the later narrative uses present-tense verbs: 'kommt', 'mache', 'spiele', and 'schwimme'. They should be shifted to past tense while leaving all other wording unchanged.",
+          "corrected": "und dann kam letztes Jahr. Ich machte ein Urlaub in Hamburg und nach Koeln. fruher, als ich Kind war, spielte ich gern Basketball und schwamm."
+        }
+      },
+      {
+        "input": "Ich mache ein Urlaub in Hamburg und nach Koeln. fruher, als ich Kind war, spiele ich gern Basketball und schwimme. weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'fruher, als ich Kind war' and 'damals' establish past frames, but the later present-tense verbs 'spiele', 'schwimme', and 'spreche' drift from them. 'mache' is present tense but occurs before the past frames, so it is not a reversion under the specified rule.",
+          "corrected": "Ich mache ein Urlaub in Hamburg und nach Koeln. fruher, als ich Kind war, habe ich gern Basketball gespielt und bin geschwommen. weil ich damals kein Deutsch gesprochen habe, wuerde ein paar Frauen mit mir nicht reden."
+        }
+      },
+      {
+        "input": "fruher, als ich Kind war, spiele ich gern Basketball und schwimme. weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden. dann wir sehen, wie lange wir auf Deutsch reden.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'fruher, als ich Kind war' and 'damals' establish a past narrative frame. The later clause continues that narrative but uses present-tense 'sehen' and 'reden'; they should be past tense. The earlier clauses also contain present-tense drift: 'spiele', 'schwimme', and 'spreche'.",
+          "corrected": "fruher, als ich Kind war, spielte ich gern Basketball und schwamm. weil ich damals kein Deutsch sprach, wuerden ein paar Frauen mit mir nicht reden. dann sahen wir, wie lange wir auf Deutsch redeten."
+        }
+      },
+      {
+        "input": "weil ich damals kein Deutsch spreche, wuerde ein paar Frauen mit mir nicht reden. dann wir sehen, wie lange wir auf Deutsch reden. manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "skipped": false,
+        "output": {
+          "error": true,
+          "confidence": "high",
+          "reasoning": "'damals' establishes a past frame, but 'spreche' is present tense and should be past tense. The later clauses continue the same narrative and also use present-tense verbs ('sehen', 'gibt', 'ist'), which drift from the established past frame.",
+          "corrected": "weil ich damals kein Deutsch gesprochen habe, wuerden ein paar Frauen mit mir nicht reden. dann sahen wir, wie lange wir auf Deutsch redeten. manchmal gab es Problem, manchmal war es ein Vorteil."
+        }
+      },
+      {
+        "input": "dann wir sehen, wie lange wir auf Deutsch reden. manchmal gibt es Problem, manchmal es ist ein Vorteil. Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "No clear past-tense verb or past-time marker establishes a past narrative frame. The clauses are in the present tense, so there is no confirmed reversion from past to present.",
+          "corrected": "dann wir sehen, wie lange wir auf Deutsch reden. manchmal gibt es Problem, manchmal es ist ein Vorteil. Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern."
+        }
+      },
+      {
+        "input": "manchmal gibt es Problem, manchmal es ist ein Vorteil. Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern. Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "high",
+          "reasoning": "No past-tense verb or clear past-time marker establishes a past narrative frame. The clauses are consistently in the present tense, so there is no tense reversion to flag.",
+          "corrected": "manchmal gibt es Problem, manchmal es ist ein Vorteil. Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern. Ich freue mich fuer diese Reise, dass ich bald gehe."
+        }
+      },
+      {
+        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern. Ich freue mich fuer diese Reise, dass ich bald gehe. Das waere schoen, wenn ich mehr Zeit haette zum Ueben.",
+        "skipped": false,
+        "output": {
+          "error": false,
+          "confidence": "low",
+          "reasoning": "No clear past narrative frame is established. The clauses use present, future-oriented, and subjunctive forms, but there is no later present-tense reversion from an established past event.",
+          "corrected": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern. Ich freue mich fuer diese Reise, dass ich bald gehe. Das waere schoen, wenn ich mehr Zeit haette zum Ueben."
+        }
+      }
+    ],
+    "UNFILLED_PAUSE": [
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 3.84,
+            "end": 4.22
+          },
+          {
+            "word": "suche",
+            "start": 4.22,
+            "end": 4.6
+          },
+          {
+            "word": "schon",
+            "start": 4.6,
+            "end": 4.98
+          },
+          {
+            "word": "seit",
+            "start": 4.98,
+            "end": 5.36
+          },
+          {
+            "word": "ein",
+            "start": 5.36,
+            "end": 5.74
+          },
+          {
+            "word": "paar",
+            "start": 5.74,
+            "end": 6.12
+          },
+          {
+            "word": "Monaten",
+            "start": 6.12,
+            "end": 6.5
+          },
+          {
+            "word": "nach",
+            "start": 6.5,
+            "end": 6.88
+          },
+          {
+            "word": "einem",
+            "start": 6.88,
+            "end": 7.26
+          },
+          {
+            "word": "Tandempartner.",
+            "start": 7.26,
+            "end": 7.64
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "suche"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "suche",
+                "schon"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "schon",
+                "seit"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "seit",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "ein",
+                "paar"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "paar",
+                "Monaten"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "Monaten",
+                "nach"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "nach",
+                "einem"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            },
+            {
+              "between": [
+                "einem",
+                "Tandempartner."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start chaining across every word suggests artificially merged or uniformly aligned timestamps rather than independently measured word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Trotzdem",
+            "start": 10.34,
+            "end": 10.72
+          },
+          {
+            "word": "kann",
+            "start": 10.72,
+            "end": 11.1
+          },
+          {
+            "word": "ich",
+            "start": 11.1,
+            "end": 11.48
+          },
+          {
+            "word": "nicht",
+            "start": 11.48,
+            "end": 11.86
+          },
+          {
+            "word": "mit",
+            "start": 11.86,
+            "end": 12.24
+          },
+          {
+            "word": "die",
+            "start": 12.24,
+            "end": 12.62
+          },
+          {
+            "word": "Leute",
+            "start": 12.62,
+            "end": 13.0
+          },
+          {
+            "word": "sprechen.",
+            "start": 13.0,
+            "end": 13.38
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Trotzdem",
+                "kann"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "kann",
+                "ich"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "ich",
+                "nicht"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "nicht",
+                "mit"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "mit",
+                "die"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "die",
+                "Leute"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "Leute",
+                "sprechen."
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 16.08,
+            "end": 16.46
+          },
+          {
+            "word": "koche",
+            "start": 16.46,
+            "end": 16.84
+          },
+          {
+            "word": "gern",
+            "start": 16.84,
+            "end": 17.22
+          },
+          {
+            "word": "verschiedene",
+            "start": 17.22,
+            "end": 17.6
+          },
+          {
+            "word": "Sachen.",
+            "start": 17.6,
+            "end": 17.98
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "koche"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary separate words suggests merged or coarse alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "koche",
+                "gern"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary separate words suggests merged or coarse alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "gern",
+                "verschiedene"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary separate words suggests merged or coarse alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "verschiedene",
+                "Sachen."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary separate words suggests merged or coarse alignment rather than reliable word-boundary timing."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich,",
+            "start": 21.06,
+            "end": 21.44
+          },
+          {
+            "word": "aeh,",
+            "start": 21.44,
+            "end": 21.82
+          },
+          {
+            "word": "ich",
+            "start": 21.82,
+            "end": 22.2
+          },
+          {
+            "word": "weiss",
+            "start": 22.2,
+            "end": 22.58
+          },
+          {
+            "word": "nicht",
+            "start": 22.58,
+            "end": 22.96
+          },
+          {
+            "word": "genau,",
+            "start": 22.96,
+            "end": 23.34
+          },
+          {
+            "word": "aehm,",
+            "start": 23.34,
+            "end": 23.72
+          },
+          {
+            "word": "wie",
+            "start": 23.72,
+            "end": 24.1
+          },
+          {
+            "word": "ich",
+            "start": 24.1,
+            "end": 24.48
+          },
+          {
+            "word": "das",
+            "start": 24.48,
+            "end": 24.86
+          },
+          {
+            "word": "sagen",
+            "start": 24.86,
+            "end": 25.24
+          },
+          {
+            "word": "soll.",
+            "start": 25.24,
+            "end": 25.62
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich,",
+                "aeh,"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "aeh,",
+                "ich"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "ich",
+                "weiss"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "weiss",
+                "nicht"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "nicht",
+                "genau,"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "genau,",
+                "aehm,"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "aehm,",
+                "wie"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "wie",
+                "ich"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "ich",
+                "das"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "das",
+                "sagen"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "sagen",
+                "soll."
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 26.02,
+            "end": 26.4
+          },
+          {
+            "word": "sage",
+            "start": 26.4,
+            "end": 26.78
+          },
+          {
+            "word": "dir",
+            "start": 26.78,
+            "end": 27.16
+          },
+          {
+            "word": "ein",
+            "start": 27.16,
+            "end": 27.54
+          },
+          {
+            "word": "Beispiel.",
+            "start": 27.54,
+            "end": 27.92
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "sage"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality is artificially merged and may indicate boundary timestamp quantization or overlap."
+            },
+            {
+              "between": [
+                "sage",
+                "dir"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality is artificially merged and may indicate boundary timestamp quantization or overlap."
+            },
+            {
+              "between": [
+                "dir",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality is artificially merged and may indicate boundary timestamp quantization or overlap."
+            },
+            {
+              "between": [
+                "ein",
+                "Beispiel."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality is artificially merged and may indicate boundary timestamp quantization or overlap."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Wie",
+            "start": 29.48,
+            "end": 29.86
+          },
+          {
+            "word": "viele",
+            "start": 29.86,
+            "end": 30.24
+          },
+          {
+            "word": "Tage",
+            "start": 30.24,
+            "end": 30.62
+          },
+          {
+            "word": "war",
+            "start": 30.62,
+            "end": 31.0
+          },
+          {
+            "word": "ich",
+            "start": 31.0,
+            "end": 31.38
+          },
+          {
+            "word": "in",
+            "start": 31.38,
+            "end": 31.76
+          },
+          {
+            "word": "die",
+            "start": 31.76,
+            "end": 32.14
+          },
+          {
+            "word": "Krankenhaus?",
+            "start": 32.14,
+            "end": 32.52
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Wie",
+                "viele"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "viele",
+                "Tage"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "Tage",
+                "war"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "war",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "ich",
+                "in"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "in",
+                "die"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            },
+            {
+              "between": [
+                "die",
+                "Krankenhaus?"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across ordinary words suggests merged or artificially quantized alignment."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 35.22,
+            "end": 35.6
+          },
+          {
+            "word": "lebe",
+            "start": 35.6,
+            "end": 35.98
+          },
+          {
+            "word": "in",
+            "start": 37.78,
+            "end": 38.16
+          },
+          {
+            "word": "die",
+            "start": 38.16,
+            "end": 38.54
+          },
+          {
+            "word": "USA.",
+            "start": 38.54,
+            "end": 38.92
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "lebe"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "lebe",
+                "in"
+              ],
+              "status": "suspect",
+              "reasoning": "A 1.80-second gap between ordinary adjacent words, with no disfluency marker or punctuation-like break, is unusually large and may reflect a dropped word or timestamp misalignment."
+            },
+            {
+              "between": [
+                "in",
+                "die"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "die",
+                "USA."
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "und",
+            "start": 42.76,
+            "end": 43.14
+          },
+          {
+            "word": "dann",
+            "start": 43.14,
+            "end": 43.52
+          },
+          {
+            "word": "kommt",
+            "start": 43.52,
+            "end": 43.9
+          },
+          {
+            "word": "letztes",
+            "start": 43.9,
+            "end": 44.28
+          },
+          {
+            "word": "Jahr.",
+            "start": 44.28,
+            "end": 44.66
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "und",
+                "dann"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps is unusually compressed for two distinct spoken words and may indicate merged or mechanically segmented timestamps."
+            },
+            {
+              "between": [
+                "dann",
+                "kommt"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests mechanically merged word timing rather than independently aligned boundaries."
+            },
+            {
+              "between": [
+                "kommt",
+                "letztes"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests mechanically merged word timing rather than independently aligned boundaries."
+            },
+            {
+              "between": [
+                "letztes",
+                "Jahr."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps suggests mechanically merged word timing rather than independently aligned boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 46.98,
+            "end": 47.36
+          },
+          {
+            "word": "mache",
+            "start": 47.36,
+            "end": 47.74
+          },
+          {
+            "word": "ein",
+            "start": 47.74,
+            "end": 48.12
+          },
+          {
+            "word": "Urlaub",
+            "start": 48.12,
+            "end": 48.5
+          },
+          {
+            "word": "in",
+            "start": 48.5,
+            "end": 48.88
+          },
+          {
+            "word": "Hamburg",
+            "start": 48.88,
+            "end": 49.26
+          },
+          {
+            "word": "und",
+            "start": 49.26,
+            "end": 49.64
+          },
+          {
+            "word": "nach",
+            "start": 49.64,
+            "end": 50.02
+          },
+          {
+            "word": "Koeln.",
+            "start": 50.02,
+            "end": 50.4
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "mache"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "mache",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "ein",
+                "Urlaub"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "Urlaub",
+                "in"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "in",
+                "Hamburg"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "Hamburg",
+                "und"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "und",
+                "nach"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "nach",
+                "Koeln."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting, identical-duration timestamps across every word suggests artificial segmentation or merged/alignment timestamps rather than independently timed word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "fruher,",
+            "start": 51.96,
+            "end": 52.34
+          },
+          {
+            "word": "als",
+            "start": 52.34,
+            "end": 52.72
+          },
+          {
+            "word": "ich",
+            "start": 52.72,
+            "end": 53.1
+          },
+          {
+            "word": "Kind",
+            "start": 53.1,
+            "end": 53.48
+          },
+          {
+            "word": "war,",
+            "start": 53.48,
+            "end": 53.86
+          },
+          {
+            "word": "spiele",
+            "start": 53.86,
+            "end": 54.24
+          },
+          {
+            "word": "ich",
+            "start": 54.24,
+            "end": 54.62
+          },
+          {
+            "word": "gern",
+            "start": 54.62,
+            "end": 55.0
+          },
+          {
+            "word": "Basketball",
+            "start": 55.0,
+            "end": 55.38
+          },
+          {
+            "word": "und",
+            "start": 55.38,
+            "end": 55.76
+          },
+          {
+            "word": "schwimme.",
+            "start": 55.76,
+            "end": 56.14
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "fruher,",
+                "als"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "als",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "ich",
+                "Kind"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "Kind",
+                "war,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "war,",
+                "spiele"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap despite punctuation-like break; the uniform contiguous timing pattern suggests merged or quantized alignment."
+            },
+            {
+              "between": [
+                "spiele",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "ich",
+                "gern"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "gern",
+                "Basketball"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "Basketball",
+                "und"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            },
+            {
+              "between": [
+                "und",
+                "schwimme."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly contiguous, uniform-duration timestamps across every word suggests artificial quantized alignment rather than reliable word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "weil",
+            "start": 58.08,
+            "end": 58.46
+          },
+          {
+            "word": "ich",
+            "start": 58.46,
+            "end": 58.84
+          },
+          {
+            "word": "damals",
+            "start": 58.84,
+            "end": 59.22
+          },
+          {
+            "word": "kein",
+            "start": 59.22,
+            "end": 59.6
+          },
+          {
+            "word": "Deutsch",
+            "start": 59.6,
+            "end": 59.98
+          },
+          {
+            "word": "spreche,",
+            "start": 59.98,
+            "end": 60.36
+          },
+          {
+            "word": "wuerde",
+            "start": 60.36,
+            "end": 60.74
+          },
+          {
+            "word": "ein",
+            "start": 60.74,
+            "end": 61.12
+          },
+          {
+            "word": "paar",
+            "start": 61.12,
+            "end": 61.5
+          },
+          {
+            "word": "Frauen",
+            "start": 61.5,
+            "end": 61.88
+          },
+          {
+            "word": "mit",
+            "start": 61.88,
+            "end": 62.26
+          },
+          {
+            "word": "mir",
+            "start": 62.26,
+            "end": 62.64
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "weil",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "ich",
+                "damals"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "damals",
+                "kein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "kein",
+                "Deutsch"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "Deutsch",
+                "spreche,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "spreche,",
+                "wuerde"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "wuerde",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "ein",
+                "paar"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "paar",
+                "Frauen"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "Frauen",
+                "mit"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "mit",
+                "mir"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across many consecutive words suggests quantized or merged alignment rather than reliable word-boundary timing."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "nicht",
+            "start": 62.64,
+            "end": 63.02
+          },
+          {
+            "word": "reden.",
+            "start": 63.02,
+            "end": 63.4
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "nicht",
+                "reden."
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "dann",
+            "start": 64.96,
+            "end": 65.34
+          },
+          {
+            "word": "wir",
+            "start": 65.34,
+            "end": 65.72
+          },
+          {
+            "word": "sehen,",
+            "start": 65.62,
+            "end": 66.0
+          },
+          {
+            "word": "wie",
+            "start": 66.0,
+            "end": 66.38
+          },
+          {
+            "word": "lange",
+            "start": 66.38,
+            "end": 66.76
+          },
+          {
+            "word": "wir",
+            "start": 66.76,
+            "end": 67.14
+          },
+          {
+            "word": "auf",
+            "start": 67.14,
+            "end": 67.52
+          },
+          {
+            "word": "Deutsch",
+            "start": 67.52,
+            "end": 67.9
+          },
+          {
+            "word": "reden.",
+            "start": 67.9,
+            "end": 68.28
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "dann",
+                "wir"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "wir",
+                "sehen,"
+              ],
+              "status": "suspect",
+              "reasoning": "The timestamps overlap: “sehen,” starts 0.10 seconds before “wir” ends, suggesting a merged or misaligned boundary."
+            },
+            {
+              "between": [
+                "sehen,",
+                "wie"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "wie",
+                "lange"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "lange",
+                "wir"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "wir",
+                "auf"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "auf",
+                "Deutsch"
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            },
+            {
+              "between": [
+                "Deutsch",
+                "reden."
+              ],
+              "status": "trustworthy",
+              "reasoning": null
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "manchmal",
+            "start": 69.84,
+            "end": 70.22
+          },
+          {
+            "word": "gibt",
+            "start": 70.22,
+            "end": 70.6
+          },
+          {
+            "word": "es",
+            "start": 70.6,
+            "end": 70.98
+          },
+          {
+            "word": "Problem,",
+            "start": 70.98,
+            "end": 71.36
+          },
+          {
+            "word": "manchmal",
+            "start": 71.36,
+            "end": 71.74
+          },
+          {
+            "word": "es",
+            "start": 71.74,
+            "end": 72.12
+          },
+          {
+            "word": "ist",
+            "start": 72.12,
+            "end": 72.5
+          },
+          {
+            "word": "ein",
+            "start": 72.5,
+            "end": 72.88
+          },
+          {
+            "word": "Vorteil.",
+            "start": 72.88,
+            "end": 73.26
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "manchmal",
+                "gibt"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality across ordinary words suggests merged or artificially contiguous timestamps."
+            },
+            {
+              "between": [
+                "gibt",
+                "es"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests an alignment artifact rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "es",
+                "Problem,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests merged or artificially contiguous timestamps."
+            },
+            {
+              "between": [
+                "Problem,",
+                "manchmal"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap despite punctuation-like break after “Problem,” is suspiciously compressed."
+            },
+            {
+              "between": [
+                "manchmal",
+                "es"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests merged or artificially contiguous timestamps."
+            },
+            {
+              "between": [
+                "es",
+                "ist"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests an alignment artifact rather than independently timed word boundaries."
+            },
+            {
+              "between": [
+                "ist",
+                "ein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests merged or artificially contiguous timestamps."
+            },
+            {
+              "between": [
+                "ein",
+                "Vorteil."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exact end/start equality suggests merged or artificially contiguous timestamps."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 74.44,
+            "end": 74.82
+          },
+          {
+            "word": "suche",
+            "start": 74.82,
+            "end": 75.2
+          },
+          {
+            "word": "fuer",
+            "start": 75.2,
+            "end": 75.58
+          },
+          {
+            "word": "Muttersprachler,",
+            "start": 75.58,
+            "end": 75.96
+          },
+          {
+            "word": "um",
+            "start": 75.96,
+            "end": 76.34
+          },
+          {
+            "word": "mein",
+            "start": 76.34,
+            "end": 76.72
+          },
+          {
+            "word": "Deutsch",
+            "start": 76.72,
+            "end": 77.1
+          },
+          {
+            "word": "zu",
+            "start": 77.1,
+            "end": 77.48
+          },
+          {
+            "word": "verbessern.",
+            "start": 77.48,
+            "end": 77.86
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "suche"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across a long sequence suggests mechanically quantized or merged word timings rather than independently aligned boundaries."
+            },
+            {
+              "between": [
+                "suche",
+                "fuer"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "fuer",
+                "Muttersprachler,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "Muttersprachler,",
+                "um"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "um",
+                "mein"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "mein",
+                "Deutsch"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "Deutsch",
+                "zu"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            },
+            {
+              "between": [
+                "zu",
+                "verbessern."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps; the repeated pattern suggests merged or mechanically assigned timestamps."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 79.04,
+            "end": 79.42
+          },
+          {
+            "word": "freue",
+            "start": 79.42,
+            "end": 79.8
+          },
+          {
+            "word": "mich",
+            "start": 79.8,
+            "end": 80.18
+          },
+          {
+            "word": "fuer",
+            "start": 80.18,
+            "end": 80.56
+          },
+          {
+            "word": "diese",
+            "start": 80.56,
+            "end": 80.94
+          },
+          {
+            "word": "Reise,",
+            "start": 80.94,
+            "end": 81.32
+          },
+          {
+            "word": "dass",
+            "start": 81.32,
+            "end": 81.7
+          },
+          {
+            "word": "ich",
+            "start": 81.7,
+            "end": 82.08
+          },
+          {
+            "word": "bald",
+            "start": 82.08,
+            "end": 82.46
+          },
+          {
+            "word": "gehe.",
+            "start": 82.46,
+            "end": 82.84
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Ich",
+                "freue"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "freue",
+                "mich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "mich",
+                "fuer"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "fuer",
+                "diese"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "diese",
+                "Reise,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "Reise,",
+                "dass"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap despite punctuation-like comma boundary may indicate merged or mechanically assigned timestamps; the exact abutment is not reliable for this boundary."
+            },
+            {
+              "between": [
+                "dass",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "ich",
+                "bald"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            },
+            {
+              "between": [
+                "bald",
+                "gehe."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests mechanically merged or quantized alignment rather than reliable word-boundary timing."
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Das",
+            "start": 84.78,
+            "end": 85.16
+          },
+          {
+            "word": "waere",
+            "start": 85.16,
+            "end": 85.54
+          },
+          {
+            "word": "schoen,",
+            "start": 85.54,
+            "end": 85.92
+          },
+          {
+            "word": "wenn",
+            "start": 85.92,
+            "end": 86.3
+          },
+          {
+            "word": "ich",
+            "start": 86.3,
+            "end": 86.68
+          },
+          {
+            "word": "mehr",
+            "start": 86.68,
+            "end": 87.06
+          },
+          {
+            "word": "Zeit",
+            "start": 87.06,
+            "end": 87.44
+          },
+          {
+            "word": "haette",
+            "start": 87.44,
+            "end": 87.82
+          },
+          {
+            "word": "zum",
+            "start": 87.82,
+            "end": 88.2
+          },
+          {
+            "word": "Ueben.",
+            "start": 88.2,
+            "end": 88.58
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "boundaries": [
+            {
+              "between": [
+                "Das",
+                "waere"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "waere",
+                "schoen,"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "schoen,",
+                "wenn"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "wenn",
+                "ich"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "ich",
+                "mehr"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "mehr",
+                "Zeit"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "Zeit",
+                "haette"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "haette",
+                "zum"
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            },
+            {
+              "between": [
+                "zum",
+                "Ueben."
+              ],
+              "status": "suspect",
+              "reasoning": "Zero gap with exactly abutting timestamps across every word suggests artificially merged or quantized alignment rather than independently reliable word boundaries."
+            }
+          ],
+          "confidence": "high"
+        }
+      }
+    ],
+    "FILLED_PAUSE": [
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 3.84,
+            "end": 4.22
+          },
+          {
+            "word": "suche",
+            "start": 4.22,
+            "end": 4.6
+          },
+          {
+            "word": "schon",
+            "start": 4.6,
+            "end": 4.98
+          },
+          {
+            "word": "seit",
+            "start": 4.98,
+            "end": 5.36
+          },
+          {
+            "word": "ein",
+            "start": 5.36,
+            "end": 5.74
+          },
+          {
+            "word": "paar",
+            "start": 5.74,
+            "end": 6.12
+          },
+          {
+            "word": "Monaten",
+            "start": 6.12,
+            "end": 6.5
+          },
+          {
+            "word": "nach",
+            "start": 6.5,
+            "end": 6.88
+          },
+          {
+            "word": "einem",
+            "start": 6.88,
+            "end": 7.26
+          },
+          {
+            "word": "Tandempartner.",
+            "start": 7.26,
+            "end": 7.64
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Trotzdem",
+            "start": 10.34,
+            "end": 10.72
+          },
+          {
+            "word": "kann",
+            "start": 10.72,
+            "end": 11.1
+          },
+          {
+            "word": "ich",
+            "start": 11.1,
+            "end": 11.48
+          },
+          {
+            "word": "nicht",
+            "start": 11.48,
+            "end": 11.86
+          },
+          {
+            "word": "mit",
+            "start": 11.86,
+            "end": 12.24
+          },
+          {
+            "word": "die",
+            "start": 12.24,
+            "end": 12.62
+          },
+          {
+            "word": "Leute",
+            "start": 12.62,
+            "end": 13.0
+          },
+          {
+            "word": "sprechen.",
+            "start": 13.0,
+            "end": 13.38
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 16.08,
+            "end": 16.46
+          },
+          {
+            "word": "koche",
+            "start": 16.46,
+            "end": 16.84
+          },
+          {
+            "word": "gern",
+            "start": 16.84,
+            "end": 17.22
+          },
+          {
+            "word": "verschiedene",
+            "start": 17.22,
+            "end": 17.6
+          },
+          {
+            "word": "Sachen.",
+            "start": 17.6,
+            "end": 17.98
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich,",
+            "start": 21.06,
+            "end": 21.44
+          },
+          {
+            "word": "aeh,",
+            "start": 21.44,
+            "end": 21.82
+          },
+          {
+            "word": "ich",
+            "start": 21.82,
+            "end": 22.2
+          },
+          {
+            "word": "weiss",
+            "start": 22.2,
+            "end": 22.58
+          },
+          {
+            "word": "nicht",
+            "start": 22.58,
+            "end": 22.96
+          },
+          {
+            "word": "genau,",
+            "start": 22.96,
+            "end": 23.34
+          },
+          {
+            "word": "aehm,",
+            "start": 23.34,
+            "end": 23.72
+          },
+          {
+            "word": "wie",
+            "start": 23.72,
+            "end": 24.1
+          },
+          {
+            "word": "ich",
+            "start": 24.1,
+            "end": 24.48
+          },
+          {
+            "word": "das",
+            "start": 24.48,
+            "end": 24.86
+          },
+          {
+            "word": "sagen",
+            "start": 24.86,
+            "end": 25.24
+          },
+          {
+            "word": "soll.",
+            "start": 25.24,
+            "end": 25.62
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [
+            {
+              "word": "aeh,",
+              "start": 21.44,
+              "end": 21.82
+            },
+            {
+              "word": "aehm,",
+              "start": 23.34,
+              "end": 23.72
+            }
+          ],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 26.02,
+            "end": 26.4
+          },
+          {
+            "word": "sage",
+            "start": 26.4,
+            "end": 26.78
+          },
+          {
+            "word": "dir",
+            "start": 26.78,
+            "end": 27.16
+          },
+          {
+            "word": "ein",
+            "start": 27.16,
+            "end": 27.54
+          },
+          {
+            "word": "Beispiel.",
+            "start": 27.54,
+            "end": 27.92
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Wie",
+            "start": 29.48,
+            "end": 29.86
+          },
+          {
+            "word": "viele",
+            "start": 29.86,
+            "end": 30.24
+          },
+          {
+            "word": "Tage",
+            "start": 30.24,
+            "end": 30.62
+          },
+          {
+            "word": "war",
+            "start": 30.62,
+            "end": 31.0
+          },
+          {
+            "word": "ich",
+            "start": 31.0,
+            "end": 31.38
+          },
+          {
+            "word": "in",
+            "start": 31.38,
+            "end": 31.76
+          },
+          {
+            "word": "die",
+            "start": 31.76,
+            "end": 32.14
+          },
+          {
+            "word": "Krankenhaus?",
+            "start": 32.14,
+            "end": 32.52
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 35.22,
+            "end": 35.6
+          },
+          {
+            "word": "lebe",
+            "start": 35.6,
+            "end": 35.98
+          },
+          {
+            "word": "in",
+            "start": 37.78,
+            "end": 38.16
+          },
+          {
+            "word": "die",
+            "start": 38.16,
+            "end": 38.54
+          },
+          {
+            "word": "USA.",
+            "start": 38.54,
+            "end": 38.92
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "und",
+            "start": 42.76,
+            "end": 43.14
+          },
+          {
+            "word": "dann",
+            "start": 43.14,
+            "end": 43.52
+          },
+          {
+            "word": "kommt",
+            "start": 43.52,
+            "end": 43.9
+          },
+          {
+            "word": "letztes",
+            "start": 43.9,
+            "end": 44.28
+          },
+          {
+            "word": "Jahr.",
+            "start": 44.28,
+            "end": 44.66
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 46.98,
+            "end": 47.36
+          },
+          {
+            "word": "mache",
+            "start": 47.36,
+            "end": 47.74
+          },
+          {
+            "word": "ein",
+            "start": 47.74,
+            "end": 48.12
+          },
+          {
+            "word": "Urlaub",
+            "start": 48.12,
+            "end": 48.5
+          },
+          {
+            "word": "in",
+            "start": 48.5,
+            "end": 48.88
+          },
+          {
+            "word": "Hamburg",
+            "start": 48.88,
+            "end": 49.26
+          },
+          {
+            "word": "und",
+            "start": 49.26,
+            "end": 49.64
+          },
+          {
+            "word": "nach",
+            "start": 49.64,
+            "end": 50.02
+          },
+          {
+            "word": "Koeln.",
+            "start": 50.02,
+            "end": 50.4
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "fruher,",
+            "start": 51.96,
+            "end": 52.34
+          },
+          {
+            "word": "als",
+            "start": 52.34,
+            "end": 52.72
+          },
+          {
+            "word": "ich",
+            "start": 52.72,
+            "end": 53.1
+          },
+          {
+            "word": "Kind",
+            "start": 53.1,
+            "end": 53.48
+          },
+          {
+            "word": "war,",
+            "start": 53.48,
+            "end": 53.86
+          },
+          {
+            "word": "spiele",
+            "start": 53.86,
+            "end": 54.24
+          },
+          {
+            "word": "ich",
+            "start": 54.24,
+            "end": 54.62
+          },
+          {
+            "word": "gern",
+            "start": 54.62,
+            "end": 55.0
+          },
+          {
+            "word": "Basketball",
+            "start": 55.0,
+            "end": 55.38
+          },
+          {
+            "word": "und",
+            "start": 55.38,
+            "end": 55.76
+          },
+          {
+            "word": "schwimme.",
+            "start": 55.76,
+            "end": 56.14
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "weil",
+            "start": 58.08,
+            "end": 58.46
+          },
+          {
+            "word": "ich",
+            "start": 58.46,
+            "end": 58.84
+          },
+          {
+            "word": "damals",
+            "start": 58.84,
+            "end": 59.22
+          },
+          {
+            "word": "kein",
+            "start": 59.22,
+            "end": 59.6
+          },
+          {
+            "word": "Deutsch",
+            "start": 59.6,
+            "end": 59.98
+          },
+          {
+            "word": "spreche,",
+            "start": 59.98,
+            "end": 60.36
+          },
+          {
+            "word": "wuerde",
+            "start": 60.36,
+            "end": 60.74
+          },
+          {
+            "word": "ein",
+            "start": 60.74,
+            "end": 61.12
+          },
+          {
+            "word": "paar",
+            "start": 61.12,
+            "end": 61.5
+          },
+          {
+            "word": "Frauen",
+            "start": 61.5,
+            "end": 61.88
+          },
+          {
+            "word": "mit",
+            "start": 61.88,
+            "end": 62.26
+          },
+          {
+            "word": "mir",
+            "start": 62.26,
+            "end": 62.64
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "nicht",
+            "start": 62.64,
+            "end": 63.02
+          },
+          {
+            "word": "reden.",
+            "start": 63.02,
+            "end": 63.4
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "dann",
+            "start": 64.96,
+            "end": 65.34
+          },
+          {
+            "word": "wir",
+            "start": 65.34,
+            "end": 65.72
+          },
+          {
+            "word": "sehen,",
+            "start": 65.62,
+            "end": 66.0
+          },
+          {
+            "word": "wie",
+            "start": 66.0,
+            "end": 66.38
+          },
+          {
+            "word": "lange",
+            "start": 66.38,
+            "end": 66.76
+          },
+          {
+            "word": "wir",
+            "start": 66.76,
+            "end": 67.14
+          },
+          {
+            "word": "auf",
+            "start": 67.14,
+            "end": 67.52
+          },
+          {
+            "word": "Deutsch",
+            "start": 67.52,
+            "end": 67.9
+          },
+          {
+            "word": "reden.",
+            "start": 67.9,
+            "end": 68.28
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "manchmal",
+            "start": 69.84,
+            "end": 70.22
+          },
+          {
+            "word": "gibt",
+            "start": 70.22,
+            "end": 70.6
+          },
+          {
+            "word": "es",
+            "start": 70.6,
+            "end": 70.98
+          },
+          {
+            "word": "Problem,",
+            "start": 70.98,
+            "end": 71.36
+          },
+          {
+            "word": "manchmal",
+            "start": 71.36,
+            "end": 71.74
+          },
+          {
+            "word": "es",
+            "start": 71.74,
+            "end": 72.12
+          },
+          {
+            "word": "ist",
+            "start": 72.12,
+            "end": 72.5
+          },
+          {
+            "word": "ein",
+            "start": 72.5,
+            "end": 72.88
+          },
+          {
+            "word": "Vorteil.",
+            "start": 72.88,
+            "end": 73.26
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 74.44,
+            "end": 74.82
+          },
+          {
+            "word": "suche",
+            "start": 74.82,
+            "end": 75.2
+          },
+          {
+            "word": "fuer",
+            "start": 75.2,
+            "end": 75.58
+          },
+          {
+            "word": "Muttersprachler,",
+            "start": 75.58,
+            "end": 75.96
+          },
+          {
+            "word": "um",
+            "start": 75.96,
+            "end": 76.34
+          },
+          {
+            "word": "mein",
+            "start": 76.34,
+            "end": 76.72
+          },
+          {
+            "word": "Deutsch",
+            "start": 76.72,
+            "end": 77.1
+          },
+          {
+            "word": "zu",
+            "start": 77.1,
+            "end": 77.48
+          },
+          {
+            "word": "verbessern.",
+            "start": 77.48,
+            "end": 77.86
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Ich",
+            "start": 79.04,
+            "end": 79.42
+          },
+          {
+            "word": "freue",
+            "start": 79.42,
+            "end": 79.8
+          },
+          {
+            "word": "mich",
+            "start": 79.8,
+            "end": 80.18
+          },
+          {
+            "word": "fuer",
+            "start": 80.18,
+            "end": 80.56
+          },
+          {
+            "word": "diese",
+            "start": 80.56,
+            "end": 80.94
+          },
+          {
+            "word": "Reise,",
+            "start": 80.94,
+            "end": 81.32
+          },
+          {
+            "word": "dass",
+            "start": 81.32,
+            "end": 81.7
+          },
+          {
+            "word": "ich",
+            "start": 81.7,
+            "end": 82.08
+          },
+          {
+            "word": "bald",
+            "start": 82.08,
+            "end": 82.46
+          },
+          {
+            "word": "gehe.",
+            "start": 82.46,
+            "end": 82.84
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      },
+      {
+        "input": [
+          {
+            "word": "Das",
+            "start": 84.78,
+            "end": 85.16
+          },
+          {
+            "word": "waere",
+            "start": 85.16,
+            "end": 85.54
+          },
+          {
+            "word": "schoen,",
+            "start": 85.54,
+            "end": 85.92
+          },
+          {
+            "word": "wenn",
+            "start": 85.92,
+            "end": 86.3
+          },
+          {
+            "word": "ich",
+            "start": 86.3,
+            "end": 86.68
+          },
+          {
+            "word": "mehr",
+            "start": 86.68,
+            "end": 87.06
+          },
+          {
+            "word": "Zeit",
+            "start": 87.06,
+            "end": 87.44
+          },
+          {
+            "word": "haette",
+            "start": 87.44,
+            "end": 87.82
+          },
+          {
+            "word": "zum",
+            "start": 87.82,
+            "end": 88.2
+          },
+          {
+            "word": "Ueben.",
+            "start": 88.2,
+            "end": 88.58
+          }
+        ],
+        "skipped": false,
+        "output": {
+          "fillers": [],
+          "confidence": "high"
+        }
+      }
+    ],
+    "FORMULAIC": [
+      {
+        "input": "Candidate: \"schon\" | Sentence: \"Ich suche schon seit ein paar Monaten nach einem Tandempartner.\"",
+        "skipped": false,
+        "output": {
+          "formulaic": false,
+          "confidence": "high",
+          "reasoning": "'schon' means 'already/for some time' in the temporal expression 'schon seit ein paar Monaten'; it is not a reassurance or concession discourse particle."
+        }
+      },
+      {
+        "input": "Candidate: \"verschiedene Sachen\" | Sentence: \"Ich koche gern verschiedene Sachen.\"",
+        "skipped": false,
+        "output": {
+          "formulaic": true,
+          "confidence": "high",
+          "reasoning": "The phrase is used vaguely as a catch-all for unspecified foods or dishes, without naming particular items."
+        }
+      }
+    ]
+  },
+  "structure_breadth_score": 3,
+  "structure_breadth_labels": [
+    "dass_clause",
+    "konjunktiv_ii",
+    "weil_clause"
+  ]
+}

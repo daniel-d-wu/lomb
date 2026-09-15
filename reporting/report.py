@@ -110,6 +110,7 @@ import difflib
 import json
 import sys
 from html import escape
+from pathlib import Path
 
 TAGS = {
     "GDD-1": "Case: always-dative preposition",
@@ -399,13 +400,19 @@ def main() -> int:
 
     report = build_report(pipeline_result)
 
-    with open("report_contract.json", "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
-    print("Wrote report_contract.json")
+    # Write next to this script (reporting/), not whatever the caller's cwd
+    # happens to be -- matters now that report.py doesn't live at repo root.
+    here = Path(__file__).resolve().parent
 
-    with open("report.html", "w", encoding="utf-8") as f:
+    contract_path = here / "report_contract.json"
+    with open(contract_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
+    print(f"Wrote {contract_path}")
+
+    html_path = here / "report.html"
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(render_html(report))
-    print("Wrote report.html")
+    print(f"Wrote {html_path}")
 
     return 0
 

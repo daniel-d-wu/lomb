@@ -12,10 +12,16 @@ Switching providers later means writing one new file in providers/, not
 touching any of the 10 files in prompts/ and not touching registry.py.
 """
 
+import sys
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
-from metric_types import MetricPromptConfig
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (providers/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig
 
 
 class LLMProvider(ABC):

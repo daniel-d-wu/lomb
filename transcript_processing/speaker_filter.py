@@ -421,9 +421,14 @@ if __name__ == "__main__":
     # input pipeline, then plugged into a real prompt's build_request()
     # to confirm the output shape is exactly what registry.py expects.
     import sys
-    sys.path.insert(0, "providers")
+    from pathlib import Path
+
+    # repo root on sys.path -- needed post-reorg since providers/ and
+    # pipeline/ are now siblings of this file's own directory
+    # (transcript_processing/), not the directory Python auto-adds for us.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from providers.gemini_provider import GeminiProvider
-    from registry import METRIC_PROMPTS
+    from pipeline.registry import METRIC_PROMPTS
 
     transcript = [
         Turn("SPEAKER_00", "Guten Tag, wie geht es Ihnen heute?", 0.0, 2.1, [

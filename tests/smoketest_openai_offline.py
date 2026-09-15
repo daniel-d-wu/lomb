@@ -42,15 +42,20 @@ those two things, not a replacement for them.
 
 import json
 import sys
+from pathlib import Path
 
 import jsonschema
 from jsonschema import Draft202012Validator
 
 from openai import OpenAI
 
+# repo root on sys.path -- registry.py and prefilter.py both moved into
+# pipeline/ post-reorg, a sibling of this file's own new directory (tests/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from providers.openai_provider import OpenAIProvider, _to_openai_schema
-from registry import METRIC_PROMPTS
-import prefilter
+from pipeline.registry import METRIC_PROMPTS
+from pipeline import prefilter
 
 FAKE_KEY = "sk-test-dummy-key-for-smoketest-only"
 

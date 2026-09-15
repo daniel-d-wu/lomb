@@ -31,7 +31,15 @@ is responsible for from 9 to 7; the assertion below was updated to match,
 not silently loosened.
 """
 
-from metric_types import MetricPromptConfig  # noqa: F401 (re-exported for convenience)
+import sys
+from pathlib import Path
+
+# repo root on sys.path -- prompts/ is a sibling of this file's own new
+# directory (pipeline/) post-reorg, not something Python puts on the path
+# for us automatically.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig  # noqa: F401 (re-exported for convenience)
 
 from prompts.gdd1 import CONFIG as GDD1_CONFIG
 from prompts.gdd2 import CONFIG as GDD2_CONFIG

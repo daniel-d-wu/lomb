@@ -14,9 +14,16 @@ for why keeping these on the same model matters.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 
-from voice_enrollment import SpeakerEmbedder
+# repo root on sys.path -- makes the dotted import below resolve whether
+# this file is run directly or imported as voice_enrollment.speechbrain_embedder.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from voice_enrollment.voice_enrollment import SpeakerEmbedder
 
 
 class EcapaSpeakerEmbedder(SpeakerEmbedder):

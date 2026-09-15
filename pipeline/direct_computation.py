@@ -50,9 +50,16 @@ pause gap that crosses a sentence boundary). One field, one join pattern,
 regardless of computation path -- that's the point.
 """
 
+import sys
+from pathlib import Path
+
+# repo root on sys.path -- prompts/ and transcript_processing/ are both
+# siblings of this file's own new directory (pipeline/) post-reorg.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from prompts.filled_pause import FILLER_TOKENS
 from prompts.unfilled_pause import PAUSE_THRESHOLD_SECONDS
-from speaker_filter import Turn, map_words_to_sentences
+from transcript_processing.speaker_filter import Turn, map_words_to_sentences
 
 
 def _boundary_type(prev_entry: dict | None, same_sentence: bool) -> str:

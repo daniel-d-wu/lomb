@@ -35,6 +35,14 @@ The two additions, and exactly how honest each one is:
 """
 
 import json
+import sys
+from pathlib import Path
+
+# archive/ (build_sample_transcript_v2.py's home) is a sibling of this
+# file's own new directory (scripts/) post-reorg, not on the path by
+# default -- this dependency on a retired/archived file predates the
+# reorg and is preserved as-is, just made to keep working.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "archive"))
 
 from build_sample_transcript_v2 import TURNS as V2_TURNS
 
@@ -145,7 +153,9 @@ def build():
 
 if __name__ == "__main__":
     doc = build()
-    out_path = "sample_transcript_assemblyai_v3.json"
+    # data/ -- the canonical copy's location since the 2026-09 reorg, not
+    # scripts/ (where this generator script itself now lives).
+    out_path = Path(__file__).resolve().parent.parent / "data" / "sample_transcript_assemblyai_v3.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
 

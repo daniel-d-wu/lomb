@@ -119,6 +119,12 @@ metrics, which still run on every sentence regardless of what this returns.
 """
 
 import re
+import sys
+from pathlib import Path
+
+# repo root on sys.path -- prompts/ is a sibling of this file's own new
+# directory (pipeline/) post-reorg.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from prompts.gdd1 import ALWAYS_DATIVE_PREPOSITIONS
 from prompts.gdd2 import WECHSELPRAEPOSITIONEN

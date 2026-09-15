@@ -3,14 +3,18 @@ Regenerates claude/lomb_prompts_source.md's file list + concatenated
 source (everything below the "Package layout" code block) from the actual
 files on disk right now. Does NOT touch anything above that point (the
 changelog) -- that stays hand-written per entry, prepended manually before
-running this. Run from inside lomb_prompts/, then paste stdout's two
+running this. Run from anywhere (path is resolved relative to this
+file, not cwd, since the 2026-09 reorg moved this into scripts/); paste stdout's two
 sections (package layout + concatenated source) into the project doc
 under their existing headers.
 """
 
 import pathlib
 
-ROOT = pathlib.Path(__file__).parent
+# repo root, not this script's own directory -- this file moved into
+# scripts/ post-reorg, but the recursive rglob() below is meant to walk
+# the WHOLE lomb_prompts tree, same as it always has.
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 FILES = sorted(
     p for p in ROOT.rglob("*.py")
     if p.name != "build_source_doc.py" and "__pycache__" not in p.parts

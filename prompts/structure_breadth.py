@@ -23,7 +23,14 @@ this was written. Replace them with real tagged examples once the corpus
 has them.
 """
 
-from metric_types import MetricPromptConfig
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (prompts/), not on the path by default.
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from pipeline.metric_types import MetricPromptConfig
 
 # Fixed, closed vocabulary. Extend this list deliberately (a reviewed code
 # change) if a genuinely new structure type needs tracking -- never let

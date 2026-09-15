@@ -30,9 +30,14 @@ new project (the same courtesy the Gemini version of this test used).
 import os
 import sys
 import time
+from pathlib import Path
+
+# repo root on sys.path -- registry.py moved into pipeline/ post-reorg, a
+# sibling of this file's own new directory (tests/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from providers.openai_provider import OpenAIProvider
-from registry import METRIC_PROMPTS
+from pipeline.registry import METRIC_PROMPTS
 
 # What to compare, per metric -- pulls the one field worth checking out of
 # either a live result or a few-shot example's own recorded answer. Six of

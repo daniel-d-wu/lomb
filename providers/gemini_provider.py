@@ -55,8 +55,15 @@ import json
 import os
 from typing import Any
 
-from llm_provider import LLMProvider
-from metric_types import MetricPromptConfig
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
+# a sibling of this file's own directory (providers/).
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from providers.llm_provider import LLMProvider
+from pipeline.metric_types import MetricPromptConfig
 
 DEFAULT_GENERATION_CONFIG = {
     "temperature": 0,

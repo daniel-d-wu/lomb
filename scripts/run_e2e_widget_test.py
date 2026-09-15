@@ -35,6 +35,18 @@ import requests
 
 HERE = Path(__file__).resolve().parent
 
+# The generated server module below needs the REPO ROOT on sys.path (not
+# just HERE) so its dotted imports (voice_enrollment.enroll_api etc.)
+# resolve -- same convention every other file in this codebase uses post-
+# reorg. A plain "insert voice_enrollment/'s own directory" was tried
+# first and broke: enroll_api.py's own bootstrap line inserts repo root
+# too, and once BOTH are on sys.path, a bare "import voice_enrollment"
+# resolves to the PACKAGE (voice_enrollment/__init__.py, which re-exports
+# nothing) instead of the flat module -- whichever bootstrap ran more
+# recently wins, which is exactly the kind of order-dependent breakage
+# dotted-absolute imports everywhere else avoids.
+REPO_ROOT = HERE.parent
+
 
 def free_port() -> int:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -50,11 +62,11 @@ def write_server_module(db_path: str) -> Path:
     module:attr. Keeps the fake embedder out of production code entirely."""
     server_src = textwrap.dedent(f"""
         import sys
-        sys.path.insert(0, {str(HERE)!r})
+        sys.path.insert(0, {str(REPO_ROOT)!r})
 
         import numpy as np
-        from enroll_api import create_app
-        from voice_enrollment import SpeakerEmbedder, SQLiteVoiceprintRepository
+        from voice_enrollment.enroll_api import create_app
+        from voice_enrollment.voice_enrollment import SpeakerEmbedder, SQLiteVoiceprintRepository
 
 
         class FixedLengthFakeEmbedder(SpeakerEmbedder):

@@ -28,13 +28,19 @@ Production wiring (main.py) constructs the real ones.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+# repo root on sys.path -- makes the dotted imports below resolve whether
+# this file is run directly or imported as voice_enrollment.enroll_api by
+# another script (e.g. scripts/run_dev_server.py).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-from audio_decode import AudioDecodeError, decode_audio_bytes
-from voice_enrollment import (
+from voice_enrollment.audio_decode import AudioDecodeError, decode_audio_bytes
+from voice_enrollment.voice_enrollment import (
     MIN_ACTIVE_ENROLLMENT_SECONDS,
     SpeakerEmbedder,
     SpeakerResolutionService,

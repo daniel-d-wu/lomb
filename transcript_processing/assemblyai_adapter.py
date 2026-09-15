@@ -44,7 +44,15 @@ proven against a genuine AssemblyAI job, not just against the documented
 schema.
 """
 
-from speaker_filter import Turn, Word
+import sys
+from pathlib import Path as _Path
+
+# repo root on sys.path -- makes the dotted import below resolve whether
+# this file is run directly or imported as transcript_processing.assemblyai_adapter
+# by another script (e.g. pipeline/pipeline.py).
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from transcript_processing.speaker_filter import Turn, Word
 
 
 def from_assemblyai_transcript(data: dict) -> list[Turn]:
@@ -89,10 +97,16 @@ def from_assemblyai_transcript(data: dict) -> list[Turn]:
 
 if __name__ == "__main__":
     import json
+    from pathlib import Path
 
-    from speaker_filter import speakers_present, filter_to_target_speaker, to_sentences
+    from transcript_processing.speaker_filter import speakers_present, filter_to_target_speaker, to_sentences
 
-    with open("sample_transcript_assemblyai.json", "r", encoding="utf-8") as f:
+    # sample_transcript_assemblyai_v3.json lives in data/ since the
+    # 2026-09 reorg; was a bare relative "sample_transcript_assemblyai.json"
+    # (no _v3, and not actually present anywhere but archive/) before that.
+    SAMPLE_TRANSCRIPT = Path(__file__).resolve().parent.parent / "data" / "sample_transcript_assemblyai_v3.json"
+
+    with open(SAMPLE_TRANSCRIPT, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     turns = from_assemblyai_transcript(data)

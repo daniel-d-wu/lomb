@@ -31,9 +31,14 @@ static-location "haengt", not accusative): error=true.
 
 import os
 import sys
+from pathlib import Path
+
+# repo root on sys.path -- registry.py moved into pipeline/ post-reorg, a
+# sibling of this file's own new directory (tests/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from providers.gemini_provider import GeminiProvider
-from registry import METRIC_PROMPTS
+from pipeline.registry import METRIC_PROMPTS
 
 
 def main() -> int:
