@@ -17,12 +17,17 @@ oauth_client.json
 recordings/
 transcripts/
 transcript_api_resp/
+speaker_identification_report.json
 
 # Python
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# SpeechBrain model cache -- symlinks to ~/.cache/huggingface/hub,
+# regenerated wherever EcapaSpeakerEmbedder() runs from; not source.
+pretrained_models/
 
 # OS/editor cruft
 .DS_Store
