@@ -27,6 +27,8 @@ from voice_enrollment.voice_enrollment import SpeakerEmbedder
 
 
 class EcapaSpeakerEmbedder(SpeakerEmbedder):
+    model_id = "speechbrain/spkrec-ecapa-voxceleb"
+
     def __init__(self):
         try:
             from speechbrain.inference.speaker import EncoderClassifier

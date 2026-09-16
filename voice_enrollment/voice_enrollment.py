@@ -89,42 +89,47 @@ THRESHOLD POLICY
   Miss either gate -> needs_manual_confirmation=True. Never silently pick
   the best of two bad options.
 
-  WHERE THE NUMBERS COME FROM (read this before changing them): they are
-  a deliberately conservative placeholder, not a calibrated result --
-  checked against the actual literature and it does not converge on one
-  number. SpeechBrain's own SpeakerRecognition.verify_batch() ships a
-  default decision threshold of 0.25 on this exact raw-cosine score
-  (per a maintainer's comment in speechbrain/speechbrain#2148), which is
-  the balanced operating point (~EER) on VoxCeleb1-test-cleaned -- curated,
-  largely-English, single-utterance studio recordings, not German-language
+  WHERE THE NUMBERS COME FROM (read this before changing them): recalibrated
+  from a real labeled batch, not a fresh guess. The previous pair (0.75 /
+  0.10) was a deliberately conservative placeholder with NO labeled data
+  behind it -- the literature didn't converge on one number either.
+  SpeechBrain's own SpeakerRecognition.verify_batch() ships a default
+  decision threshold of 0.25 on this exact raw-cosine score (per a
+  maintainer's comment in speechbrain/speechbrain#2148), the balanced
+  operating point (~EER) on VoxCeleb1-test-cleaned -- curated, largely-
+  English, single-utterance studio recordings, not German-language
   tutoring calls over videocall compression with real conversational
   turn-taking. A separate community thread on the model's own HuggingFace
   page (discussion #7) cites 0.7-0.75 as typical, but "scaled to [0,1]",
-  which may or may not be the same convention this file's raw cosine
-  score uses -- the two sources don't reconcile cleanly, and neither is a
-  clean stand-in for this domain.
+  a possibly different convention. Neither source was a clean stand-in
+  for this domain, so 0.75 was set well above both -- trading recall for
+  precision until real data existed to check that trade against.
 
-  Rather than block shipping on a proper calibration (that needs a labeled
-  batch of real uploads, which doesn't exist yet), MATCH_THRESHOLD and
-  MARGIN_THRESHOLD below are set well above SpeechBrain's own balanced
-  default -- deliberately trading recall for precision, because the two
-  failure directions are not symmetric: setting them too high just means
-  more visitors see the manual picker than strictly necessary (mildly
-  annoying, self-correcting the moment they click); setting them too low
-  risks a confident, silent, wrong auto-resolution (natasja_italki6's
-  failure mode, now automated). When in doubt, fail toward the picker.
+  That data now exists: one real enrolled voiceprint (enroll_active(),
+  the real ECAPA embedder) resolved against a batch of 33 real
+  conversation recordings (see tests/test_speaker_identification.py),
+  manually verified -- the top-ranked candidate was the confirmed-correct
+  speaker in every case, even though most of those correct matches scored
+  well below the old 0.75 bar (many in the 0.5-0.75 range). The old
+  threshold wasn't preventing wrong auto-matches in this batch; it was
+  rejecting correct ones and sending them to the manual picker for no
+  reason -- in every session the runner-up candidate scored near zero
+  (uncorrelated), so the true separation in this data sits far below
+  where 0.75 was drawn. MATCH_THRESHOLD moves to 0.55 (comfortably below
+  every confirmed-correct score observed, comfortably above the
+  runner-up cluster) and MARGIN_THRESHOLD rises to 0.25 (the observed
+  gap was never smaller than this across the batch, so raising it costs
+  nothing while making the margin gate a real check rather than a
+  formality).
 
-  Getting a REAL number later is cheap, not a re-architecture: every
-  SpeakerResolution already carries the full ranked candidate list with
-  raw similarity scores (see the `candidates` field), whichever way a
-  resolution went. The only thing production needs to do is persist that
-  struct somewhere it can be queried (a log line is enough to start) --
-  once a few hundred real resolutions have accumulated, plot similarity
-  for confirmed-correct vs. confirmed-wrong auto-matches (from "Switch
-  speaker" corrections) and pick the threshold that actually separates
-  them on this data, the same way identify_target_speaker.py already
-  does offline for Dan's personal corpus. Nothing here needs to change to
-  make that possible later -- only to make it happen.
+  This is still a small batch -- one enrolled voice, one recording
+  domain, 33 sessions -- not a universal calibration. Keep persisting
+  `candidates` from every resolution (every SpeakerResolution already
+  carries the full ranked list with raw similarity scores) so this pair
+  can be re-checked as more users and recording conditions are added,
+  the same way identify_target_speaker.py does offline for Dan's
+  personal corpus. Nothing here needs to change to make that possible --
+  only to keep doing it.
 
 EMBEDDING MODEL
   SpeechBrain's ECAPA-TDNN (speechbrain/spkrec-ecapa-voxceleb), the same
@@ -149,20 +154,22 @@ from __future__ import annotations
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 
 # ---------------------------------------------------------------------
 # Tunable policy -- see "THRESHOLD POLICY" above for the full reasoning.
-# Deliberately conservative, deliberately not calibrated yet: set above
-# SpeechBrain's own shipped balanced-operating-point default (0.25 raw
-# cosine, speechbrain/speechbrain#2148) because a false accept here is
-# far more costly than an unnecessary manual pick. Revisit once real
-# resolution logs exist -- see "Getting a REAL number later" above.
+# Recalibrated from a manually-verified batch of 33 real resolutions
+# (one enrolled voiceprint vs. 33 real conversation recordings): every
+# top candidate was confirmed correct, even though most scored well
+# below the old 0.75 bar -- that value was an uncalibrated conservative
+# guess with no labeled data behind it. Revisit again as more users/
+# domains are added -- see "WHERE THE NUMBERS COME FROM" above.
 # ---------------------------------------------------------------------
-MATCH_THRESHOLD = 0.75
-MARGIN_THRESHOLD = 0.10
+MATCH_THRESHOLD = 0.55
+MARGIN_THRESHOLD = 0.25
 
 SAMPLE_RATE = 16000  # 16kHz mono float32 -- matches identify_target_speaker.py and what the ECAPA model expects
 MIN_ACTIVE_ENROLLMENT_SECONDS = 8.0  # below this, a dedicated enrollment clip is rejected outright -- see enroll_active()
@@ -210,18 +217,68 @@ class VoiceprintRepository(ABC):
         user has never been enrolled."""
 
     @abstractmethod
-    def upsert(self, user_id: str, unit_direction_vector: np.ndarray, sample_count: int) -> None:
+    def upsert(
+        self,
+        user_id: str,
+        unit_direction_vector: np.ndarray,
+        sample_count: int,
+        embedder_id: str,
+        enrollment_source: str,
+        reset: bool = False,
+    ) -> None:
         """Overwrite the stored voiceprint with the caller's already-updated
         running mean. SpeakerResolutionService owns the running-mean math
         (see _update_running_mean); the repository just persists whatever
-        it's handed."""
+        it's handed.
+
+        embedder_id and enrollment_source ("active" or "session") are
+        provenance metadata, not resolution inputs -- a conforming
+        implementation should record them (for analysis: which enrollment
+        path produces better matches? which model produced this vector?)
+        but resolve()/get() never read them back. A repository that has
+        nowhere to put them (e.g. a bare in-memory dict for tests) may
+        ignore them.
+
+        reset=True means this call establishes a new origin even if a row
+        already exists for user_id -- i.e. embedder_id/enrollment_source
+        (and, for implementations that track it, created_at) should be
+        overwritten rather than preserved from whatever was there before.
+        This is enroll_active()'s force=True path: a deliberate "reset my
+        voice profile," not an ordinary reinforcement of an existing
+        voiceprint, so its provenance should read as fresh too."""
 
 
 class SQLiteVoiceprintRepository(VoiceprintRepository):
     """Default, zero-extra-infra implementation. One row per user_id.
     Embedding stored as raw float32 bytes -- fine at this scale (a few
     hundred bytes per user); move to a real vector column type only if/
-    when this repository is swapped for Postgres+pgvector."""
+    when this repository is swapped for Postgres+pgvector.
+
+    Metadata columns (updated_at, created_at, embedder_id,
+    enrollment_source) are NOT part of VoiceprintRepository's abstract
+    interface -- get() still returns just (vector, count), the only two
+    things SpeakerResolutionService's matching logic actually uses.
+    Exposed here via get_metadata() instead, since they're a SQLite-
+    specific convenience for diagnostics/analysis, not something every
+    future backing store (or a bare in-memory test repository) needs to
+    carry.
+
+    created_at and enrollment_source describe how/when the CURRENT
+    voiceprint was seeded (useful for asking "do actively-enrolled users
+    end up matching better than session-derived ones?"). They survive an
+    ordinary reinforcement (upsert(..., reset=False), enroll()'s only
+    mode) untouched, but a force=True reset -- upsert(..., reset=True),
+    which is enroll_active()'s force=True path -- overwrites them, since
+    that call is a deliberate "reset my voice profile," not a
+    reinforcement of what's already there.
+
+    embedder_id, by contrast, is overwritten on every upsert -- it
+    describes which model produced the vector currently stored, which is
+    the most recent embed() call's model, not the original one. (A
+    voiceprint reinforced under two different embedder versions over its
+    lifetime would have its embedder_id reflect only the latest -- a
+    known simplification, not a correctness guarantee that every
+    contribution to the running mean came from that same model.)"""
 
     def __init__(self, db_path: str | Path):
         self.db_path = str(db_path)
@@ -232,10 +289,20 @@ class SQLiteVoiceprintRepository(VoiceprintRepository):
                     user_id TEXT PRIMARY KEY,
                     embedding BLOB NOT NULL,
                     embedding_dim INTEGER NOT NULL,
-                    sample_count INTEGER NOT NULL
+                    sample_count INTEGER NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT '',
+                    embedder_id TEXT NOT NULL DEFAULT '',
+                    enrollment_source TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
+            # Migration for DBs created before these columns existed --
+            # ALTER TABLE has no "IF NOT EXISTS" for ADD COLUMN, so check first.
+            existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(voiceprints)")}
+            for col in ("updated_at", "created_at", "embedder_id", "enrollment_source"):
+                if col not in existing_cols:
+                    conn.execute(f"ALTER TABLE voiceprints ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
@@ -252,19 +319,68 @@ class SQLiteVoiceprintRepository(VoiceprintRepository):
         vec = np.frombuffer(blob, dtype=np.float32).reshape(dim).copy()
         return vec, count
 
-    def upsert(self, user_id: str, unit_direction_vector: np.ndarray, sample_count: int) -> None:
+    def get_metadata(self, user_id: str) -> dict | None:
+        """All non-resolution columns for this user_id, for diagnostics/
+        analysis -- or None if never enrolled. See class docstring for
+        created_at/enrollment_source's "set once" vs embedder_id's
+        "overwritten every time" semantics."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT sample_count, updated_at, created_at, embedder_id, enrollment_source "
+                "FROM voiceprints WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        sample_count, updated_at, created_at, embedder_id, enrollment_source = row
+        return {
+            "sample_count": sample_count,
+            "updated_at": updated_at or None,
+            "created_at": created_at or None,
+            "embedder_id": embedder_id or None,
+            "enrollment_source": enrollment_source or None,
+        }
+
+    def upsert(
+        self,
+        user_id: str,
+        unit_direction_vector: np.ndarray,
+        sample_count: int,
+        embedder_id: str,
+        enrollment_source: str,
+        reset: bool = False,
+    ) -> None:
+        """reset=True means "treat this as a brand-new origin even if a
+        row already exists" -- the force=True path in enroll_active().
+        Without it, an existing row's created_at/enrollment_source survive
+        untouched (a session()-driven reinforcement of an already-enrolled
+        voiceprint); with it, this call's created_at/enrollment_source
+        overwrite whatever was there, matching "force=True is a fresh
+        enroll_active() call, not a delete endpoint" from that method's
+        own docstring."""
         vec = unit_direction_vector.astype(np.float32)
+        now = datetime.now(timezone.utc).isoformat()
+        # created_at/enrollment_source are only in this SET clause when
+        # reset=True -- otherwise an existing row's origin metadata must
+        # survive the conflict untouched. See docstring above.
+        provenance_set_clause = (
+            ", created_at = excluded.created_at, enrollment_source = excluded.enrollment_source" if reset else ""
+        )
         with self._connect() as conn:
             conn.execute(
-                """
-                INSERT INTO voiceprints (user_id, embedding, embedding_dim, sample_count)
-                VALUES (?, ?, ?, ?)
+                f"""
+                INSERT INTO voiceprints
+                    (user_id, embedding, embedding_dim, sample_count, updated_at, created_at, embedder_id, enrollment_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
                     embedding = excluded.embedding,
                     embedding_dim = excluded.embedding_dim,
-                    sample_count = excluded.sample_count
+                    sample_count = excluded.sample_count,
+                    updated_at = excluded.updated_at,
+                    embedder_id = excluded.embedder_id
+                    {provenance_set_clause}
                 """,
-                (user_id, vec.tobytes(), vec.shape[0], sample_count),
+                (user_id, vec.tobytes(), vec.shape[0], sample_count, now, now, embedder_id, enrollment_source),
             )
             conn.commit()
 
@@ -275,6 +391,14 @@ class SpeakerEmbedder(ABC):
     speechbrain_embedder.py -- not imported by this module directly, so
     unit tests here never need speechbrain/torch installed) can be
     swapped without touching SpeakerResolutionService."""
+
+    model_id: str = "unspecified"
+    """Self-identifies which model produced embeddings from this instance
+    -- stored alongside every voiceprint (see SQLiteVoiceprintRepository)
+    so a swapped/upgraded embedder later doesn't get silently cosine-
+    compared against vectors an incompatible model produced. Concrete
+    subclasses should override this class attribute; the default exists
+    only so test/placeholder embedders that don't care aren't forced to."""
 
     @abstractmethod
     def embed(self, waveform: np.ndarray) -> np.ndarray:
@@ -357,11 +481,17 @@ class SpeakerResolutionService:
         new_embedding = self.embedder.embed(confirmed_speaker.waveform)
         stored = self.repository.get(user_id)
         if stored is None:
-            self.repository.upsert(user_id, _unit(new_embedding), sample_count=1)
+            self.repository.upsert(
+                user_id, _unit(new_embedding), sample_count=1,
+                embedder_id=self.embedder.model_id, enrollment_source="session",
+            )
             return
         reference_vec, sample_count = stored
         updated_vec, updated_count = _update_running_mean(reference_vec, sample_count, new_embedding)
-        self.repository.upsert(user_id, updated_vec, updated_count)
+        self.repository.upsert(
+            user_id, updated_vec, updated_count,
+            embedder_id=self.embedder.model_id, enrollment_source="session",
+        )
 
     def enroll_active(
         self,
@@ -421,7 +551,11 @@ class SpeakerResolutionService:
                 "visitor-initiated 'reset my voice profile')"
             )
         embedding = self.embedder.embed(recording)
-        self.repository.upsert(user_id, _unit(embedding), sample_count=initial_weight)
+        self.repository.upsert(
+            user_id, _unit(embedding), sample_count=initial_weight,
+            embedder_id=self.embedder.model_id, enrollment_source="active",
+            reset=True,
+        )
 
 
 def _update_running_mean(reference_unit_vec: np.ndarray, sample_count: int, new_raw_embedding: np.ndarray) -> tuple[np.ndarray, int]:

@@ -29,11 +29,30 @@
   #message.error { color: #dc2626; }
   #message.success { color: #15803d; }
   #force-row { margin-top: 16px; font-size: 13px; color: #555; }
+  #script-card {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  #script-card p { margin: 4px 0; color: #444; font-size: 13px; }
+  #script-card ol { margin: 8px 0 0; padding-left: 20px; }
+  #script-card li { font-size: 17px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
   <h1>Voice Enrollment (dev slice)</h1>
   <div id="status-line">Checking enrollment status...</div>
+
+  <div id="script-card">
+    <p>Read these three sentences aloud, at a normal pace, while recording:</p>
+    <ol>
+      <li>Das Wetter ist heute sehr schön.</li>
+      <li>Ich trinke gern einen Kaffee am Morgen.</li>
+      <li>Berlin ist die Hauptstadt von Deutschland.</li>
+    </ol>
+    <p id="script-hint">That's plenty for the minimum recording length -- keep talking a little past the third sentence if the timer below hasn't reached it yet.</p>
+  </div>
 
   <button id="record-btn">Start Recording</button>
   <span id="timer"></span>
@@ -53,6 +72,9 @@
   const statusLine = document.getElementById('status-line');
   const forceRow = document.getElementById('force-row');
   const forceCheckbox = document.getElementById('force-checkbox');
+  const scriptHint = document.getElementById('script-hint');
+
+  scriptHint.textContent = `That's plenty for the ${MIN_SECONDS}s minimum -- keep talking a little past the third sentence if the timer below hasn't reached it yet.`;
 
   let mediaRecorder = null;
   let chunks = [];
