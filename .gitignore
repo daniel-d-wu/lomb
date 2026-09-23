@@ -36,3 +36,6 @@ Thumbs.db
 .idea/
 voiceprints_dev.sqlite
 scripts/voiceprints_dev.sqlite
+
+# Local-only project docs -- never goes to GitHub, deliberately (2026-09-23)
+docs/
