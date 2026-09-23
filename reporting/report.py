@@ -55,13 +55,24 @@ WHAT THIS DOES NOT DO (gaps against the full PRD Section 5 contract,
 stated plainly rather than silently painted over with fabricated
 numbers):
 
-- `fluency.wpm`, `ohRate`, `ahRate` and `complexity.ttr`, `vocdD`,
-  `wuerde`, `hypothetical` are NOT computed here at all. Those are the 6
-  Python-logic metrics (WPM, "Oh" rate, Lexical Diversity, Missing
-  Active Vocabulary, Missing Syntactic Structures, Preterite Avoidance --
-  see claude/lomb_metric_definitions_v1.md) -- a completely separate,
+- `fluency.ohRate`, `ahRate` and `complexity.ttr`, `vocdD`, `wuerde`,
+  `hypothetical` are NOT computed here -- 6 fields, not "WPM plus 5"
+  (this docstring previously said WPM belonged to this NOT-computed list;
+  it doesn't, see the correction below). These are Python-logic metrics
+  ("Oh"/"Äh" rate, Lexical Diversity, Missing Active Vocabulary, Missing
+  Syntactic Structures, Preterite Avoidance -- see
+  claude/lomb_metric_definitions_v1.md) -- a completely separate,
   not-yet-built module that this LLM-assisted pipeline was never meant
   to cover. Left null with a coverage note, not estimated.
+
+- `fluency.wpm` IS computed here (direct_computation.compute_wpm(), as of
+  2026-09-07) -- Dan confirmed 2026-09-23 this one is required, not
+  deferrable like the 6 above. This paragraph used to lump it in with
+  the NOT-computed list above; that was stale relative to the code below
+  it, which already returns a real value (see the `fluency` dict's own
+  `_coverage_note` for the caveat that it's a convenience value, not yet
+  a stored Metric Aggregator output -- that caveat still stands, this
+  correction is only about whether a number comes back at all).
 
 - UNFILLED_PAUSE is now surfaced as a plain occurrence count (see
   _summarize_unfilled_pause()'s own docstring), not a rate -- word_count

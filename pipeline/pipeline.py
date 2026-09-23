@@ -185,8 +185,25 @@ assert len(_ALL_REPORTED_METRICS) == 11, (
 )
 
 
-def run_pipeline(provider, assemblyai_json: dict, target_speaker_id: str) -> dict:
-    """The one function this module exists to provide.
+def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> dict:
+    """The actual orchestration core -- engine-agnostic as of 2026-09-20.
+
+    2026-09-20: split out of what used to be the only run_pipeline()
+    function, so a transcription engine other than AssemblyAI (first
+    concretely: whisperX+pyannote, see transcript_processing/
+    whisperx_adapter.py) can reach every metric below without this module
+    knowing or caring which engine produced its input. Before this split,
+    run_pipeline() hardcoded assemblyai_adapter.from_assemblyai_transcript()
+    as its very first line -- there was no seam for a second engine to
+    plug into short of a second, near-duplicate copy of this entire
+    function (and everything below it silently drifting out of sync with
+    this one as it evolves). Everything from filter_to_target_speaker()
+    onward never actually depended on AssemblyAI-shaped input in the
+    first place; it only ever touched Turn/Word objects, which is exactly
+    speaker_filter.py's own point (see that module's docstring). This
+    function is the proof: it takes turns directly, already adapted by
+    whichever *_adapter.py the caller used, and everything downstream is
+    unchanged.
 
     provider: any llm_provider.LLMProvider instance -- OpenAIProvider() in
       production per providers/openai_provider.py's 2026-09-03 switch to
@@ -194,8 +211,11 @@ def run_pipeline(provider, assemblyai_json: dict, target_speaker_id: str) -> dic
       imported and hardcoded here, so this stays swappable (this module
       never needs to know or care which provider answered) and testable
       (the __main__ block below passes a FakeProvider instead).
-    assemblyai_json: one decoded GET /v2/transcript/{id} response (a
-      dict) -- see assemblyai_adapter.py for the shape this needs.
+    turns: list[transcript_processing.speaker_filter.Turn], already
+      produced by an adapter (assemblyai_adapter.from_assemblyai_transcript(),
+      whisperx_adapter.from_whisperx_transcript(), or any future engine's
+      own adapter) -- this function has no idea which, and must never be
+      given a reason to care.
     target_speaker_id: which diarized speaker to run metrics against.
       lomb_backend_prd_v1.md Section 6.2 requires the visitor to confirm
       this before any metrics run -- this function does NOT do that
@@ -252,7 +272,6 @@ def run_pipeline(provider, assemblyai_json: dict, target_speaker_id: str) -> dic
     than kept at a meaningless 0, per this project's stated preference for
     an absent field over a fabricated number.
     """
-    turns = from_assemblyai_transcript(assemblyai_json)
     target_turns = filter_to_target_speaker(turns, target_speaker_id)
     sentences = to_sentences(target_turns)
     sentence_windows = to_sentence_windows(target_turns)
@@ -362,6 +381,21 @@ def run_pipeline(provider, assemblyai_json: dict, target_speaker_id: str) -> dic
         "structure_breadth_score": len(breadth_labels),
         "structure_breadth_labels": sorted(breadth_labels),
     }
+
+
+def run_pipeline(provider, assemblyai_json: dict, target_speaker_id: str) -> dict:
+    """Back-compat entry point -- the original signature, unchanged
+    behavior. Adapts raw AssemblyAI JSON to Turn objects via
+    assemblyai_adapter.from_assemblyai_transcript(), then delegates to
+    run_pipeline_from_turns() for everything else (see that function's
+    2026-09-20 docstring note for why this split happened -- a second
+    engine, whisperX+pyannote, needed a way to reach the same metrics
+    logic without going through AssemblyAI's response shape first).
+    Existing callers (scripts/run_pipeline_live.py, this module's own
+    __main__ self-test below) need zero changes -- this function's
+    signature and return value are identical to before the split."""
+    turns = from_assemblyai_transcript(assemblyai_json)
+    return run_pipeline_from_turns(provider, turns, target_speaker_id)
 
 
 if __name__ == "__main__":
