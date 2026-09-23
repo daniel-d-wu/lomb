@@ -158,6 +158,22 @@ CREATE TABLE IF NOT EXISTS report2_exports (
     row_count      INTEGER,
     generated_at   TEXT NOT NULL
 );
+
+-- Report 1. Schema per docs/lomb_data_schema_v1.md's REPORT 1 section --
+-- scoped out when this file was first built (see module docstring's
+-- OUT-OF-SCOPE note, now stale as of 2026-09-23: this table closes that
+-- gap). UNIQUE(session_id) matches the schema doc's own note: one
+-- current Report 1 per session, add a version column later if history
+-- ever matters.
+CREATE TABLE IF NOT EXISTS report_snapshots (
+    report_id        TEXT PRIMARY KEY,
+    session_id       TEXT NOT NULL REFERENCES sessions(session_id),
+    transcript_id    TEXT REFERENCES transcripts(transcript_id),
+    payload_json     TEXT NOT NULL,
+    diagnosis_model  TEXT,
+    generated_at     TEXT NOT NULL,
+    UNIQUE(session_id)
+);
 """
 
 # Placeholder taxonomy -- see module docstring's PLACEHOLDER section.
@@ -235,6 +251,11 @@ class StorageRepository(ABC):
     @abstractmethod
     def create_report2_export(self, export_id: str, session_id: str, storage_uri: str,
                                *, format: str = "xlsx", row_count: int | None = None) -> None: ...
+
+    @abstractmethod
+    def create_report_snapshot(self, report_id: str, session_id: str, payload_json: str,
+                                *, transcript_id: str | None = None,
+                                diagnosis_model: str | None = None) -> None: ...
 
     @abstractmethod
     def list_information_items(self, session_id: str) -> list[dict]: ...
@@ -413,6 +434,23 @@ class SQLiteStorageRepository(StorageRepository):
                     storage_uri = excluded.storage_uri, row_count = excluded.row_count, generated_at = excluded.generated_at
                 """,
                 (export_id, session_id, storage_uri, format, row_count, _now()),
+            )
+
+    # --- report_snapshots -----------------------------------------------------
+
+    def create_report_snapshot(self, report_id, session_id, payload_json, *,
+                                transcript_id=None, diagnosis_model=None) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO report_snapshots (report_id, session_id, transcript_id, payload_json, diagnosis_model, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    report_id = excluded.report_id, transcript_id = excluded.transcript_id,
+                    payload_json = excluded.payload_json, diagnosis_model = excluded.diagnosis_model,
+                    generated_at = excluded.generated_at
+                """,
+                (report_id, session_id, transcript_id, payload_json, diagnosis_model, _now()),
             )
 
 

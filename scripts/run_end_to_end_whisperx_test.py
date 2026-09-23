@@ -70,6 +70,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.pipeline import run_pipeline_from_turns
+from reporting.report import build_report
 from storage.storage import SQLiteStorageRepository, persist_pipeline_result
 from transcript_processing.whisperx_adapter import from_whisperx_transcript
 
@@ -259,6 +260,15 @@ def main() -> int:
         repo, session_id, transcript_id, result, id_factory=lambda: str(uuid.uuid4())
     )
     print(f"\npersist_pipeline_result() -> {write_summary}")
+
+    report1_payload = build_report(result)
+    report_id = f"report-{uuid.uuid4()}"
+    diagnosis_model = provider.model if args.use_openai else "FakeProvider"
+    repo.create_report_snapshot(
+        report_id, session_id, json.dumps(report1_payload, ensure_ascii=False),
+        transcript_id=transcript_id, diagnosis_model=diagnosis_model,
+    )
+    print(f"report_snapshots: 1 row written (report_id={report_id}, diagnosis_model={diagnosis_model})")
 
     repo.update_session(
         session_id, status="complete",
