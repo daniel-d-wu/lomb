@@ -13,10 +13,9 @@ Ties together every piece built so far, in order:
     find_formulaic_matches()                       -> per-metric input shapes
   prefilter.should_run()                           drop sentences from a batch where safe
   batching.classify_batch()                        ONE call per LLM metric per session
-                                                    (7 metrics; FORMULAIC,
-                                                    UNFILLED_PAUSE,
-                                                    FILLED_PAUSE, WPM never
-                                                    reach this)
+                                                    (every prompts/*.py
+                                                    fluenceme; the direct ones
+                                                    never reach this)
   direct_computation.compute_filled_pause() /
     compute_unfilled_pause() / compute_wpm()       the other 4 direct metrics
   -> a session-level breadth_score aggregation for STRUCTURE_BREADTH
@@ -276,8 +275,8 @@ def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str, *,
                                      # None if skipped
             , ...
           ]
-          for each of the 11 metric keys above (7 via classify(), 4 via
-          direct computation -- see this module's docstring)
+          for every fluenceme key in registry.py (LLM ones via batching,
+          direct ones via DIRECT_FLUENCEMES -- see this module's docstring)
         },
         "structure_breadth_score": int,   # count of DISTINCT non-"none"
                                            # labels seen anywhere this

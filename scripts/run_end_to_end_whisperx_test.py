@@ -40,7 +40,7 @@ glossed over):
     no route to api.openai.com (confirmed repeatedly elsewhere in this
     project), and Dan's own stated tolerance for this test is "accuracy
     doesn't matter too much yet." Pass --use-openai (with OPENAI_API_KEY
-    set) to run the real 7 LLM-assisted metrics for real, e.g. from Dan's
+    set) to run the real LLM-assisted fluencemes for real, e.g. from Dan's
     own machine.
 
   - Audio: passed explicitly via --audio (required -- voiceprint matching

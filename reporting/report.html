@@ -8,6 +8,8 @@ h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding
 .tag { display: inline-block; background: #eee; border-radius: 12px; padding: .1rem .6rem; font-size: .8rem; margin-bottom: .5rem; }
 .sentence { font-size: 1rem; line-height: 1.5; }
 .bad-sentence { margin-bottom: .25rem; }
+.tag.repeat { background: #fdf0d5; margin-left: .4rem; }
+.also { font-size: .8rem; color: #666; margin-top: .35rem; }
 .bad-hl { color: #b3261e; font-weight: 600; }
 .good-hl { color: #1e7a34; font-weight: 600; }
 .missing { color: #888; font-style: italic; font-weight: 400; }
@@ -21,53 +23,92 @@ ul.coverage { font-size: .85rem; color: #555; }
 Coverage is partial -- see the notes under each section for exactly what is and isn't included yet.</p>
 
 <p>Speaker: <strong>A</strong> &middot;
-6 sentences &middot; 6 timestamp windows analyzed.</p>
+16 sentences analyzed.</p>
 
 <h2>Accuracy — flagged errors</h2>
 
         <div class="card">
+          <span class="tag">Case: always-dative preposition</span>
+          <div class="sentence bad-sentence">Trotzdem kann ich nicht mit <span class="bad-hl">die Leute</span> sprechen.</div>
+          <div class="sentence good-sentence">Trotzdem kann ich nicht mit <span class="good-hl">den Leuten</span> sprechen.</div>
+          
+        </div>
+        <div class="card">
           <span class="tag">Case: two-way preposition (Wechselpräposition)</span>
-          <div class="sentence bad-sentence">Ich lebe in die USA.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">Ich lebe in <span class="bad-hl">die</span> USA.</div>
+          <div class="sentence good-sentence">Ich lebe in <span class="good-hl">den</span> USA.</div>
+          <div class="also">Also in this sentence: Preposition (L1 transfer)</div>
+        </div>
+        <div class="card">
+          <span class="tag">Case: two-way preposition (Wechselpräposition)</span>
+          <div class="sentence bad-sentence">Wie viele Tage war ich <span class="bad-hl">in die</span> Krankenhaus?</div>
+          <div class="sentence good-sentence">Wie viele Tage war ich <span class="good-hl">im</span> Krankenhaus?</div>
+          <div class="also">Also in this sentence: Preposition (L1 transfer)</div>
+        </div>
+        <div class="card">
+          <span class="tag">Verb tense drift</span>
+          <div class="sentence bad-sentence">Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich <span class="bad-hl">lebe</span> in die USA.</div>
+          <div class="sentence good-sentence">Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich <span class="good-hl">lebte</span> in die USA.</div>
+          
+        </div>
+        <div class="card">
+          <span class="tag">Verb tense drift</span>
+          <div class="sentence bad-sentence">Ich lebe in die USA. und dann kommt letztes Jahr. Ich <span class="bad-hl">mache</span> ein Urlaub in Hamburg und nach Koeln.</div>
+          <div class="sentence good-sentence">Ich lebe in die USA. und dann kommt letztes Jahr. Ich <span class="good-hl">machte</span> ein Urlaub in Hamburg und nach Koeln.</div>
+          
         </div>
         <div class="card">
           <span class="tag">Verb position</span>
-          <div class="sentence bad-sentence">dann wir sehen, wie lange wir auf Deutsch reden.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">dann <span class="bad-hl">wir sehen,</span> wie lange wir auf Deutsch reden.</div>
+          <div class="sentence good-sentence">dann <span class="good-hl">sehen wir,</span> wie lange wir auf Deutsch reden.</div>
+          <div class="also">Also in this sentence: Word choice / collocation</div>
+        </div>
+        <div class="card">
+          <span class="tag">Verb position</span>
+          <div class="sentence bad-sentence">manchmal gibt es Problem, manchmal es <span class="bad-hl">ist</span> ein Vorteil.</div>
+          <div class="sentence good-sentence">manchmal gibt es Problem, manchmal <span class="good-hl">ist</span> es ein Vorteil.</div>
+          
         </div>
         <div class="card">
           <span class="tag">Preposition (L1 transfer)</span>
-          <div class="sentence bad-sentence">Ich lebe in die USA.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">Ich freue mich <span class="bad-hl">fuer</span> diese Reise, dass ich bald gehe.</div>
+          <div class="sentence good-sentence">Ich freue mich <span class="good-hl">auf</span> diese Reise, dass ich bald gehe.</div>
+          <div class="also">Also in this sentence: Word choice / collocation</div>
         </div>
         <div class="card">
           <span class="tag">Preposition (L1 transfer)</span>
-          <div class="sentence bad-sentence">Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">Ich suche <span class="bad-hl">fuer Muttersprachler,</span> um mein Deutsch zu verbessern.</div>
+          <div class="sentence good-sentence">Ich suche <span class="good-hl">nach Muttersprachlern,</span> um mein Deutsch zu verbessern.</div>
+          <div class="also">Also in this sentence: Word choice / collocation</div>
         </div>
         <div class="card">
           <span class="tag">Word choice / collocation</span>
-          <div class="sentence bad-sentence">dann wir sehen, wie lange wir auf Deutsch reden.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">Ich <span class="bad-hl">sage</span> dir ein Beispiel.</div>
+          <div class="sentence good-sentence">Ich <span class="good-hl">gebe</span> dir ein Beispiel.</div>
+          
         </div>
         <div class="card">
           <span class="tag">Word choice / collocation</span>
-          <div class="sentence bad-sentence">Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.</div>
-          <div class="sentence good-sentence"><span class="missing">(corrected form not available -- re-run with the updated prompts to get this)</span></div>
+          <div class="sentence bad-sentence">Ich mache <span class="bad-hl">ein</span> Urlaub in Hamburg und <span class="bad-hl">nach Koeln.</span></div>
+          <div class="sentence good-sentence">Ich mache Urlaub in Hamburg und <span class="good-hl">in Köln.</span></div>
+          
         </div>
-<ul class="coverage"><li>GDD-1: ran, 0 flagged this session.</li><li>GDD-2: 1 flagged this session, all shown.</li><li>GVT-1: not yet wired into this pipeline run (see pipeline.py&#x27;s scope notes) -- absent, not zero.</li><li>GVT-2: 1 flagged this session, all shown.</li><li>LPF: 3 flagged this session, only 2 shown per the 2026-09-02 display cap.</li><li>LP: 3 flagged this session, only 2 shown per the 2026-09-02 display cap.</li></ul>
+<ul class="coverage"><li>GDD-1: 1 flagged this session, 1 shown.</li><li>GDD-2: 2 flagged this session, 2 shown.</li><li>GVT-1: 7 flagged this session, 2 shown.</li><li>GVT-2: 3 flagged this session, 2 shown (1 more auto-rejected as untrustworthy, not counted).</li><li>LPF: 4 flagged this session, 2 shown (2 more auto-rejected as untrustworthy, not counted).</li><li>LP: 6 flagged this session, 2 shown.</li><li>GDD-3: not yet wired into this pipeline run (see pipeline.py&#x27;s scope notes) -- absent, not zero.</li><li>GDD-4: not yet wired into this pipeline run (see pipeline.py&#x27;s scope notes) -- absent, not zero.</li><li>GDD-5: not yet wired into this pipeline run (see pipeline.py&#x27;s scope notes) -- absent, not zero.</li><li>GDD-6: not yet wired into this pipeline run (see pipeline.py&#x27;s scope notes) -- absent, not zero.</li></ul>
 
-<h2>Fluency — unfilled pauses</h2>
+<h2>Fluency — speed &amp; unfilled pauses</h2>
+<p><em>Not available (zero speaking time detected this session).</em></p>
 
-        <p>47 word boundaries checked, 47 flagged suspect
-        (100%).</p>
-        <p class="warn">Over half of all word boundaries were flagged &#x27;suspect&#x27; -- this almost always means the input timestamps were mechanically uniform (as in a synthetic test transcript), not that the speaker actually paused unnaturally often. Treat this run&#x27;s pause data as a pipeline-wiring check, not a real fluency finding, until it&#x27;s re-run against real ASR output.</p>
+        <p><strong>17</strong> unfilled pause(s) found
+        (sentence boundary: 0,
+        clause boundary: 0,
+        mid-clause: 17).</p>
+        <p class="notice">Raw count only -- no rate yet, since word_count isn&#x27;t part of this pipeline&#x27;s output (that&#x27;s a sessions-table field per lomb_metric_architecture_v1.md, not computed here). No ASR-boundary trustworthiness check is performed as of 2026-09-06 (see prompts/unfilled_pause.py) -- a mis-timed ASR boundary could still inflate or hide a real pause.</p>
         
-<p class="notice">WPM and hesitation ("oh"/"ah") rates are not shown here — they come from a
+<p class="notice">Hesitation ("oh"/"ah") rates are not shown here — they come from a
 separate, not-yet-built module.</p>
 
 <h2>Complexity — sentence structure breadth</h2>
-<p>Breadth score: <strong>2</strong> distinct structures used (dass_clause, konjunktiv_ii).</p>
+<p>Breadth score: <strong>3</strong> distinct structures used (dass_clause, konjunktiv_ii, weil_clause).</p>
 <p class="notice">Lexical diversity (TTR/vocd-D) and other complexity numbers are not shown here for the same reason.</p>
 
 </body></html>

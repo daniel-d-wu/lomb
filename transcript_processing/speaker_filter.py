@@ -105,17 +105,11 @@ def filter_to_target_speaker(transcript: list[Turn], target_speaker_id: str) -> 
 # ---------------------------------------------------------------------------
 
 def to_sentences(target_turns: list[Turn]) -> list[str]:
-    """Feeds the 6 metrics that run one call per raw sentence: GDD-1, GDD-2,
-    GVT-2, LPF, LP, STRUCTURE_BREADTH. Also the raw material two OTHER
-    functions below build on top of, rather than feeding directly: GVT-1
-    actually runs on windows of these (see to_sentence_windows()), and
-    FORMULAIC actually runs on regex matches found in these (see
-    find_formulaic_matches()) -- GVT-1 is "input_kind == sentence" on paper
-    (metric_types.py has no richer category for its actual shape) but
-    isn't fed one bare entry from this list at a time either; FORMULAIC
-    isn't an LLM metric at all anymore as of 2026-09-05 (see
-    find_formulaic_matches()'s own docstring), so it has no input_kind to
-    speak of in the first place.
+    """Feeds every LLM fluenceme (as of 2026-09-24 the whole ordered list
+    goes to each one in a single batched call -- see pipeline/batching.py).
+    Also the raw material for FORMULAIC's regex matches (see
+    find_formulaic_matches()); FORMULAIC isn't an LLM metric at all
+    anymore as of 2026-09-05, so it has no input_kind to speak of.
 
     Placeholder sentence-splitting (naive split on .?!) -- German
     sentence-boundary detection on disfluent ASR output is a real

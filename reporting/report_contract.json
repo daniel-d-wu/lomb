@@ -1,68 +1,135 @@
 {
   "session": {
     "targetSpeakerId": "A",
-    "sentenceCount": 6,
-    "windowCount": 6
+    "sentenceCount": 16
   },
   "fluency": {
     "wpm": null,
     "ohRate": null,
     "ahRate": null,
-    "_coverage_note": "Not computed by this pipeline -- these are Python-logic metrics (see claude/lomb_metric_definitions_v1.md), a separate module not yet built.",
+    "_coverage_note": "ohRate/ahRate are Python-logic metrics, not yet computed by this pipeline (see claude/lomb_metric_definitions_v1.md). wpm IS computed as of 2026-09-07 (direct_computation.compute_wpm()) -- but it's a convenience value derived here, not yet a real Metric Aggregator's stored output; None if this session had zero speaking time.",
     "unfilledPause": {
-      "boundaryCount": 47,
-      "suspectCount": 47,
-      "suspectRate": 1.0,
-      "reliable": false,
-      "note": "Over half of all word boundaries were flagged 'suspect' -- this almost always means the input timestamps were mechanically uniform (as in a synthetic test transcript), not that the speaker actually paused unnaturally often. Treat this run's pause data as a pipeline-wiring check, not a real fluency finding, until it's re-run against real ASR output."
+      "pauseCount": 17,
+      "byBoundaryType": {
+        "sentence": 0,
+        "clause": 0,
+        "none": 17
+      },
+      "_coverage_note": "Raw count only -- no rate yet, since word_count isn't part of this pipeline's output (that's a sessions-table field per lomb_metric_architecture_v1.md, not computed here). No ASR-boundary trustworthiness check is performed as of 2026-09-06 (see prompts/unfilled_pause.py) -- a mis-timed ASR boundary could still inflate or hide a real pause."
     }
   },
   "accuracy": {
     "errors": [
       {
+        "tag": "Case: always-dative preposition",
+        "bad": "Trotzdem kann ich nicht mit die Leute sprechen.",
+        "good": "Trotzdem kann ich nicht mit den Leuten sprechen.",
+        "why": "'mit' governs the plural noun phrase 'die Leute'. Dative plural requires 'den Leuten'.",
+        "occurrences": 1,
+        "alsoTags": []
+      },
+      {
         "tag": "Case: two-way preposition (Wechselpräposition)",
         "bad": "Ich lebe in die USA.",
-        "good": null,
-        "why": "'lebe' describes a static location, so the dative is required: 'in den USA,' not 'in die USA'."
+        "good": "Ich lebe in den USA.",
+        "why": "'leben' describes a static location, so the dative is required after 'in': 'den USA', not accusative 'die USA'.",
+        "occurrences": 1,
+        "alsoTags": [
+          "Preposition (L1 transfer)"
+        ]
+      },
+      {
+        "tag": "Case: two-way preposition (Wechselpräposition)",
+        "bad": "Wie viele Tage war ich in die Krankenhaus?",
+        "good": "Wie viele Tage war ich im Krankenhaus?",
+        "why": "'war' describes a location, so the dative is required after 'in'. For the neuter noun 'Krankenhaus', this is 'im Krankenhaus', not 'in die Krankenhaus'.",
+        "occurrences": 1,
+        "alsoTags": [
+          "Preposition (L1 transfer)"
+        ]
+      },
+      {
+        "tag": "Verb tense drift",
+        "bad": "Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich lebe in die USA.",
+        "good": "Ich sage dir ein Beispiel. Wie viele Tage war ich in die Krankenhaus? Ich lebte in die USA.",
+        "why": "'war' establishes a past frame in the question, but the following clause uses present tense ('lebe') while continuing the same narrative about the speaker's situation. The drifted verb should be past tense ('lebte').",
+        "occurrences": 1,
+        "alsoTags": []
+      },
+      {
+        "tag": "Verb tense drift",
+        "bad": "Ich lebe in die USA. und dann kommt letztes Jahr. Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "good": "Ich lebe in die USA. und dann kommt letztes Jahr. Ich machte ein Urlaub in Hamburg und nach Koeln.",
+        "why": "'letztes Jahr' establishes a past-time frame for the following vacation narrative, but 'mache' reverts to present tense and should be past tense. The earlier 'lebe' is outside that past frame and is not drifted.",
+        "occurrences": 1,
+        "alsoTags": []
       },
       {
         "tag": "Verb position",
         "bad": "dann wir sehen, wie lange wir auf Deutsch reden.",
-        "good": null,
-        "why": "With fronted 'dann', the finite verb must precede the subject. 'wir sehen' is incorrect; it should be 'Dann sehen wir ...'."
+        "good": "dann sehen wir, wie lange wir auf Deutsch reden.",
+        "why": "'Dann' is a fronted element, so the finite verb must come before the subject: 'Dann sehen wir'.",
+        "occurrences": 1,
+        "alsoTags": [
+          "Word choice / collocation"
+        ]
+      },
+      {
+        "tag": "Verb position",
+        "bad": "manchmal gibt es Problem, manchmal es ist ein Vorteil.",
+        "good": "manchmal gibt es Problem, manchmal ist es ein Vorteil.",
+        "why": "'manchmal' is fronted in the second clause, so the finite verb must come before the subject: 'manchmal ist es ein Vorteil.'",
+        "occurrences": 1,
+        "alsoTags": []
       },
       {
         "tag": "Preposition (L1 transfer)",
-        "bad": "Ich lebe in die USA.",
-        "good": null,
-        "why": "The verb 'leben' with a location takes 'in' plus the dative for a static location: 'Ich lebe in den USA.'"
+        "bad": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
+        "good": "Ich freue mich auf diese Reise, dass ich bald gehe.",
+        "why": "'sich freuen auf' is used for an upcoming event, so 'fuer' is incorrect here.",
+        "occurrences": 1,
+        "alsoTags": [
+          "Word choice / collocation"
+        ]
       },
       {
         "tag": "Preposition (L1 transfer)",
         "bad": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
-        "good": null,
-        "why": "'suchen' governs 'nach', not 'für'; the sentence should use 'Ich suche nach Muttersprachlern'."
+        "good": "Ich suche nach Muttersprachlern, um mein Deutsch zu verbessern.",
+        "why": "'suchen' governs 'nach', not 'für'; the object should be dative plural: 'nach Muttersprachlern'.",
+        "occurrences": 1,
+        "alsoTags": [
+          "Word choice / collocation"
+        ]
       },
       {
         "tag": "Word choice / collocation",
-        "bad": "dann wir sehen, wie lange wir auf Deutsch reden.",
-        "good": null,
-        "why": "„wie lange wir auf Deutsch reden“ is a natural phrase, but „dann wir sehen“ is not a native German word order. The natural form is „dann sehen wir, wie lange wir auf Deutsch reden“."
+        "bad": "Ich sage dir ein Beispiel.",
+        "good": "Ich gebe dir ein Beispiel.",
+        "why": "'ein Beispiel sagen' is not the natural German collocation; native speakers say 'ein Beispiel geben' or 'ein Beispiel nennen'.",
+        "occurrences": 1,
+        "alsoTags": []
       },
       {
         "tag": "Word choice / collocation",
-        "bad": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
-        "good": null,
-        "why": "'für Muttersprachler suchen' is not a natural collocation for this meaning. Native speakers would say 'Ich suche Muttersprachler, um mein Deutsch zu verbessern' or 'Ich suche nach Muttersprachlern …'."
+        "bad": "Ich mache ein Urlaub in Hamburg und nach Koeln.",
+        "good": "Ich mache Urlaub in Hamburg und in Köln.",
+        "why": "'Urlaub machen' is a natural collocation, but the phrase requires the uncountable form 'Urlaub', not 'ein Urlaub'. Also, 'nach Köln' is natural for the destination. The corrected sentence is 'Ich mache Urlaub in Hamburg und in Köln.'",
+        "occurrences": 1,
+        "alsoTags": []
       }
     ],
     "_coverage_notes": [
-      "GDD-1: ran, 0 flagged this session.",
-      "GDD-2: 1 flagged this session, all shown.",
-      "GVT-1: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero.",
-      "GVT-2: 1 flagged this session, all shown.",
-      "LPF: 3 flagged this session, only 2 shown per the 2026-09-02 display cap.",
-      "LP: 3 flagged this session, only 2 shown per the 2026-09-02 display cap."
+      "GDD-1: 1 flagged this session, 1 shown.",
+      "GDD-2: 2 flagged this session, 2 shown.",
+      "GVT-1: 7 flagged this session, 2 shown.",
+      "GVT-2: 3 flagged this session, 2 shown (1 more auto-rejected as untrustworthy, not counted).",
+      "LPF: 4 flagged this session, 2 shown (2 more auto-rejected as untrustworthy, not counted).",
+      "LP: 6 flagged this session, 2 shown.",
+      "GDD-3: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero.",
+      "GDD-4: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero.",
+      "GDD-5: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero.",
+      "GDD-6: not yet wired into this pipeline run (see pipeline.py's scope notes) -- absent, not zero."
     ]
   },
   "complexity": {
@@ -72,10 +139,11 @@
     "hypothetical": null,
     "_coverage_note": "ttr/vocdD/wuerde/hypothetical are Python-logic metrics, not computed by this pipeline. structureBreadth below IS from this run (STRUCTURE_BREADTH, LLM-assisted).",
     "structureBreadth": {
-      "breadthScore": 2,
+      "breadthScore": 3,
       "labels": [
         "dass_clause",
-        "konjunktiv_ii"
+        "konjunktiv_ii",
+        "weil_clause"
       ]
     }
   }

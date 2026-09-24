@@ -83,9 +83,8 @@ numbers):
   not estimated against a guessed denominator.
 
 - FORMULAIC and FILLED_PAUSE are not in ERROR_METRICS below and never
-  contribute to accuracy.errors[] -- claude/lomb_reporting_requirements_v1.
-  md's own 6-metric error cap (GDD-1, GDD-2, GVT-1, GVT-2, LPF, LP) never
-  included either of them; that's a reporting-scope decision, unrelated to
+  contribute to accuracy.errors[] -- only fluencemes whose prompt file sets
+  a report1_tag do (see ERROR_METRICS below); that's a reporting-scope decision, unrelated to
   whether pipeline.py runs them. A fresh pipeline_result.json will have
   "FORMULAIC" and "FILLED_PAUSE" keys with real per-occurrence output in
   them -- this file just doesn't surface either into the HTML report yet,
@@ -120,10 +119,12 @@ numbers):
 import difflib
 import json
 import sys
+from collections import defaultdict
 from html import escape
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from pipeline.flag_quality import changed_word_count, fix_signature, rejection_reason  # noqa: E402
 from pipeline.registry import METRIC_PROMPTS, REPORT1_ERROR_METRICS  # noqa: E402
 
 # Report 1's accuracy.errors[] metrics and their labels come from each
@@ -134,40 +135,82 @@ from pipeline.registry import METRIC_PROMPTS, REPORT1_ERROR_METRICS  # noqa: E40
 TAGS = {key: METRIC_PROMPTS[key].report1_tag for key in REPORT1_ERROR_METRICS}
 ERROR_METRICS = REPORT1_ERROR_METRICS
 CAP_PER_METRIC = 2
-CAP_TOTAL = CAP_PER_METRIC * len(ERROR_METRICS)  # 12, per the 2026-09-02 decision
+CAP_TOTAL = CAP_PER_METRIC * len(ERROR_METRICS)  # 2 per Report 1 metric (2026-09-02 decision)
+
+
+def _card_rank(entry: dict) -> tuple:
+    """Clearer lesson first: fewest words changed, then shorter sentence."""
+    good = entry["output"].get("corrected") or entry["input"]
+    return (changed_word_count(entry["input"], good), len(entry["input"].split()))
 
 
 def _build_accuracy(results: dict) -> dict:
-    errors = []
+    """Pick which flagged errors a learner sees, per metric (2026-09-24,
+    replacing "first 2 in sentence order"):
+
+    1. Only trustworthy flags (pipeline/flag_quality.py) -- a wrong or empty
+       correction teaches the wrong thing.
+    2. Same mistake with the same word repeated -> ONE card, with
+       `occurrences`; habits first, since they're the most useful to fix.
+    3. Then the clearest lesson: fewest words changed, then shortest sentence.
+    4. Each sentence appears once across all metrics; other error types found
+       in it are listed in `alsoTags` instead of repeating the sentence.
+    Metrics are visited in report1_order, so the higher-priority metric
+    claims a shared sentence. Cards are ordered repeated-mistakes-first.
+    """
+    candidates: dict[str, list[dict]] = {}
+    rejected: dict[str, int] = {}
+    tags_by_sentence: dict[str, list[str]] = defaultdict(list)
     coverage = []
     for metric in ERROR_METRICS:
         if metric not in results:
-            coverage.append(f"{metric}: not yet wired into this pipeline run "
-                             f"(see pipeline.py's scope notes) -- absent, not zero.")
             continue
-        entries = results[metric]
-        flagged = [
-            e for e in entries
-            if not e["skipped"] and e["output"] is not None and e["output"].get("error") is True
-        ]
-        shown = flagged[:CAP_PER_METRIC]
-        for e in shown:
-            errors.append({
+        flagged = [e for e in results[metric]
+                   if not e["skipped"] and e["output"] is not None and e["output"].get("error") is True]
+        valid = [e for e in flagged if rejection_reason(e["output"], e["input"]) is None]
+        candidates[metric], rejected[metric] = valid, len(flagged) - len(valid)
+        for e in valid:
+            tags_by_sentence[e["input"]].append(metric)
+
+    cards, shown_sentences = [], set()
+    for rank, metric in enumerate(ERROR_METRICS):
+        if metric not in results:
+            coverage.append(f"{metric}: not yet wired into this pipeline run "
+                            f"(see pipeline.py's scope notes) -- absent, not zero.")
+            continue
+        groups: dict[tuple, list[dict]] = defaultdict(list)
+        for e in candidates[metric]:
+            groups[fix_signature(e["input"], e["output"].get("corrected") or e["input"])].append(e)
+        ranked_groups = sorted(groups.values(), key=lambda g: (-len(g), _card_rank(min(g, key=_card_rank))))
+
+        shown = 0
+        for group in ranked_groups:
+            example = next((e for e in sorted(group, key=_card_rank) if e["input"] not in shown_sentences), None)
+            if example is None:
+                continue
+            shown_sentences.add(example["input"])
+            cards.append((-len(group), rank, {
                 "tag": TAGS[metric],
-                "bad": e["input"],
+                "bad": example["input"],
                 # None when this pipeline_result.json predates the
                 # `corrected` schema field -- see module docstring.
-                "good": e["output"].get("corrected"),
-                "why": e["output"]["reasoning"],
-            })
-        if len(flagged) > CAP_PER_METRIC:
-            coverage.append(f"{metric}: {len(flagged)} flagged this session, "
-                             f"only {CAP_PER_METRIC} shown per the 2026-09-02 display cap.")
-        elif flagged:
-            coverage.append(f"{metric}: {len(flagged)} flagged this session, all shown.")
-        else:
-            coverage.append(f"{metric}: ran, 0 flagged this session.")
-    return {"errors": errors, "_coverage_notes": coverage}
+                "good": example["output"].get("corrected"),
+                "why": example["output"]["reasoning"],
+                "occurrences": len(group),
+                "alsoTags": [TAGS[m] for m in tags_by_sentence[example["input"]] if m != metric],
+            }))
+            shown += 1
+            if shown == CAP_PER_METRIC:
+                break
+
+        n_valid = len(candidates[metric])
+        note = f"{metric}: {n_valid} flagged this session, {shown} shown"
+        if rejected[metric]:
+            note += f" ({rejected[metric]} more auto-rejected as untrustworthy, not counted)"
+        coverage.append(note + ".")
+
+    cards.sort(key=lambda c: (c[0], c[1]))
+    return {"errors": [card for _, _, card in cards], "_coverage_notes": coverage}
 
 
 def _summarize_structure_breadth(pipeline_result: dict) -> dict | None:
@@ -316,11 +359,16 @@ def render_html(report: dict) -> str:
     cards = []
     for e in accuracy["errors"]:
         bad_html, good_html = _diff_html(e["bad"], e["good"])
+        repeat = (f'<span class="tag repeat">Seen {e["occurrences"]}× this session</span>'
+                  if e.get("occurrences", 1) > 1 else "")
+        also = (f'<div class="also">Also in this sentence: {escape(", ".join(e["alsoTags"]))}</div>'
+                if e.get("alsoTags") else "")
         cards.append(f"""
         <div class="card">
-          <span class="tag">{escape(e['tag'])}</span>
+          <span class="tag">{escape(e['tag'])}</span>{repeat}
           <div class="sentence bad-sentence">{bad_html}</div>
           <div class="sentence good-sentence">{good_html}</div>
+          {also}
         </div>""")
     error_cards = "".join(cards) or "<p><em>No errors flagged (or no error metrics have results yet).</em></p>"
 
@@ -363,6 +411,8 @@ h2 {{ font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ddd; paddin
 .tag {{ display: inline-block; background: #eee; border-radius: 12px; padding: .1rem .6rem; font-size: .8rem; margin-bottom: .5rem; }}
 .sentence {{ font-size: 1rem; line-height: 1.5; }}
 .bad-sentence {{ margin-bottom: .25rem; }}
+.tag.repeat {{ background: #fdf0d5; margin-left: .4rem; }}
+.also {{ font-size: .8rem; color: #666; margin-top: .35rem; }}
 .bad-hl {{ color: #b3261e; font-weight: 600; }}
 .good-hl {{ color: #1e7a34; font-weight: 600; }}
 .missing {{ color: #888; font-style: italic; font-weight: 400; }}

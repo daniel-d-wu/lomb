@@ -200,7 +200,8 @@ SCHEMA_VERSION = "1.3"
 # placeholder "<feature>_count" set, not claude/lomb_metric_architecture_v1.md's
 # eventual real ones (see module docstring).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from pipeline.registry import taxonomy_rows  # noqa: E402
+from pipeline.flag_quality import rejection_reason  # noqa: E402
+from pipeline.registry import DIRECT_FLUENCEMES, taxonomy_rows  # noqa: E402
 
 PHASE1_TAXONOMY = taxonomy_rows()
 
@@ -500,13 +501,14 @@ def is_flagged(feature_key: str, entry: dict) -> bool:
     output = entry.get("output") or {}
     if feature_key == "STRUCTURE_BREADTH":
         return any(label != "none" for label in output.get("structures", []))
-    if feature_key in ("FORMULAIC", "FILLED_PAUSE", "UNFILLED_PAUSE", "WPM"):
+    if feature_key in DIRECT_FLUENCEMES:
         # Direct-computation metrics only ever produce occurrence rows in
         # the first place (see direct_computation.py's own docstring) --
         # every entry IS a flagged instance, WPM's one session-level
         # Information entry included.
         return True
-    return bool(output.get("error"))
+    # LLM error flags count only if trustworthy (pipeline/flag_quality.py).
+    return bool(output.get("error")) and rejection_reason(output, entry.get("input", "")) is None
 
 
 def persist_pipeline_result(
@@ -539,9 +541,12 @@ def persist_pipeline_result(
     items_written = 0
     for feature_key, entries in result["results"].items():
         for entry in entries:
-            if not is_flagged(feature_key, entry):
-                continue
             output = entry.get("output") or {}
+            reason = None if entry.get("skipped") else rejection_reason(output, entry.get("input", ""))
+            if not is_flagged(feature_key, entry) and reason is None:
+                continue
+            # Untrustworthy flags are kept for review but marked, and never counted.
+            review_status = f"auto_rejected: {reason}" if reason else "unreviewed"
             sentence_indices = output.get("sentence_indices")
             utterance_ref = (
                 str(sentence_indices[0]) if sentence_indices else None
@@ -555,6 +560,7 @@ def persist_pipeline_result(
                 run_id=run_id,
                 transcript_id=transcript_id,
                 utterance_ref=utterance_ref,
+                review_status=review_status,
             )
             items_written += 1
 
@@ -610,7 +616,7 @@ if __name__ == "__main__":
             "structure_breadth_score": 2,
             "results": {
                 "GDD-1": [
-                    {"input": "s1", "skipped": False, "output": {"error": True, "sentence_indices": [0]}},
+                    {"input": "s1", "skipped": False, "output": {"error": True, "confidence": "high", "sentence_indices": [0]}},
                     {"input": "s2", "skipped": False, "output": {"error": False, "sentence_indices": [1]}},
                     {"input": "s3", "skipped": True, "output": None},
                 ],
@@ -631,6 +637,11 @@ if __name__ == "__main__":
                 "LP": [{"input": "s1", "skipped": False, "output": {"error": False, "sentence_indices": [0]}}],
             },
         }
+
+        # A real pipeline result has every registered fluenceme key; give the
+        # fake one the same so new fluencemes are covered without editing this.
+        for _feature_key, *_ in PHASE1_TAXONOMY:
+            fake_result["results"].setdefault(_feature_key, [])
 
         summary = persist_pipeline_result(repo, session_id, "transcript-test-1", fake_result,
                                            id_factory=lambda: str(uuid.uuid4()), run_id="run-test-1")

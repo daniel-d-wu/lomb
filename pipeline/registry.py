@@ -133,7 +133,7 @@ if __name__ == "__main__":
     openai_ = OpenAIProvider()
     gemini = GeminiProvider()
 
-    # Prove build_request() works for all 7 metrics, on BOTH providers,
+    # Prove build_request() works for every LLM fluenceme, on BOTH providers,
     # from the exact same METRIC_PROMPTS content -- this is the actual
     # portability claim, demonstrated rather than just asserted.
     for key, config in METRIC_PROMPTS.items():

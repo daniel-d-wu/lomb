@@ -13,12 +13,15 @@ pipeline/                the metric-scoring engine
     pipeline.py               orchestrates a full run: transcript in, scored metrics out
     registry.py               wires each metric name to its prompt config / direct-computation function
     prefilter.py              cheap pre-checks that skip metrics that can't apply to a given transcript
-    direct_computation.py     metrics computed with plain code, not an LLM (FILLED_PAUSE, UNFILLED_PAUSE, WPM)
+    batching.py               one LLM call per metric per 15-min chunk (all sentences in one request)
+    direct_computation.py     metrics computed with plain code, not an LLM (FORMULAIC, FILLED_PAUSE, UNFILLED_PAUSE, WPM)
     metric_types.py           shared dataclasses (MetricPromptConfig, etc.) everything else imports
 
-prompts/                  one file per LLM-assisted metric
-    gdd1.py, gdd2.py, gvt1.py, gvt2.py, lp.py, lpf.py, structure_breadth.py
+prompts/                  one file per LLM-assisted metric (fluenceme)
+    gdd1.py ... gdd6.py, gvt1.py, gvt2.py, lp.py, lpf.py, structure_breadth.py
         each defines a module-level CONFIG (a pipeline.metric_types.MetricPromptConfig)
+        that also declares how it's stored and shown in Report 1. registry.py discovers
+        every CONFIG automatically -- adding a fluenceme = adding one file here.
     formulaic.py, filled_pause.py, unfilled_pause.py
         exception: these moved to direct computation, so each holds only a reference
         constant (BUNDLES / FILLER_TOKENS / PAUSE_THRESHOLD_SECONDS), no CONFIG

@@ -84,7 +84,9 @@ AUDIO_TURN_SAMPLE = "[smoke test placeholder -- audio-part construction not impl
 
 def sample_for(config):
     if config.input_kind == "sentence":
-        return SENTENCE_SAMPLES[config.key]
+        # New fluencemes (discovered from prompts/) work without editing this
+        # file: fall back to the metric's own last few-shot input.
+        return SENTENCE_SAMPLES.get(config.key, config.few_shot_examples[-1]["input"])
     if config.input_kind == "word_timestamps":
         return WORD_TIMESTAMP_SAMPLE
     if config.input_kind == "audio_turn":
@@ -163,7 +165,10 @@ def main() -> int:
             print(f"  {key:<20} UNEXPECTED SUCCESS")
         except Exception as e:
             kind = type(e).__name__
-            if kind == "APIConnectionError":
+            # No network -> APIConnectionError; with network the fake key is
+            # rejected -> AuthenticationError. Either way the request was
+            # built locally without error, which is what this check is for.
+            if kind in ("APIConnectionError", "AuthenticationError"):
                 print(f"  {key:<20} OK (local shape fine, blocked only at network layer)")
             else:
                 failures.append((key, f"LOCAL ERROR: {kind}: {e}"))

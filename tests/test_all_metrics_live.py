@@ -81,13 +81,15 @@ def main() -> int:
         config = METRIC_PROMPTS[key]
         example = config.few_shot_examples[0]
         test_input = example["input"]
-        expected = METRIC_CHECKS[key](example["answer"])
+        # New error-shaped fluencemes need no entry above -- default to "error".
+        check = METRIC_CHECKS.get(key, lambda r: r["error"])
+        expected = check(example["answer"])
 
         request = provider.build_request(config, test_input)
         try:
             raw_response = provider.call(request)
             result = provider.parse_response(raw_response)
-            actual = METRIC_CHECKS[key](result)
+            actual = check(result)
         except Exception as e:
             print(f"FAIL      {key:<20} live call errored: {type(e).__name__}: {e}")
             results.append((key, False))
