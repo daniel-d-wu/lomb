@@ -83,3 +83,73 @@ def decode_audio_bytes(raw_bytes: bytes) -> np.ndarray:
     if audio.ndim > 1:  # sf.read can hand back (n, channels) even for ac=1 in some containers -- collapse defensively
         audio = audio.mean(axis=1).astype(np.float32)
     return audio
+
+
+MAX_SECONDS_PER_SPEAKER = 90  # same cap identify_target_speaker.py uses per embedding
+MIN_SECONDS_PER_SPEAKER = 3   # below this an ECAPA embedding is unreliable
+
+
+def extract_speaker_audio(
+    audio_path: str,
+    turns,
+    max_seconds_per_speaker: float = MAX_SECONDS_PER_SPEAKER,
+    min_seconds_per_speaker: float = MIN_SECONDS_PER_SPEAKER,
+) -> dict[str, np.ndarray]:
+    """The /analyze diarization-glue step: slice one recording into each
+    diarized speaker's concatenated speech, 16kHz mono float32, ready to
+    wrap in voice_enrollment.SpeakerAudio for SpeakerResolutionService.
+
+    turns: any objects with .speaker_id/.start/.end (speaker_filter.Turn).
+    Speakers with less than min_seconds_per_speaker of speech are omitted
+    from the result, not padded -- the caller sees them missing by label.
+    """
+    spans: dict[str, list[tuple[float, float]]] = {}
+    for t in turns:
+        spans.setdefault(t.speaker_id, []).append((t.start, t.end))
+
+    result: dict[str, np.ndarray] = {}
+    for label, label_spans in spans.items():
+        picked, total = [], 0.0
+        for start, end in label_spans:
+            if total >= max_seconds_per_speaker:
+                break
+            dur = min(end - start, max_seconds_per_speaker - total)
+            if dur <= 0:
+                continue
+            picked.append((start, start + dur))
+            total += dur
+        if total < min_seconds_per_speaker:
+            continue
+
+        filter_parts = [
+            f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS[a{i}]"
+            for i, (s, e) in enumerate(picked)
+        ]
+        concat_inputs = "".join(f"[a{i}]" for i in range(len(picked)))
+        filter_complex = ";".join(filter_parts) + f";{concat_inputs}concat=n={len(picked)}:v=0:a=1[out]"
+
+        dst_fd, dst_path = tempfile.mkstemp(suffix=".wav")
+        os.close(dst_fd)  # same Windows-safe pattern as decode_audio_bytes()
+        try:
+            proc = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", str(audio_path),
+                 "-filter_complex", filter_complex, "-map", "[out]",
+                 "-ar", str(SAMPLE_RATE), "-ac", "1", dst_path],
+                capture_output=True,
+            )
+            if proc.returncode != 0:
+                raise AudioDecodeError(
+                    f"ffmpeg could not slice {label} from {audio_path}: "
+                    f"{proc.stderr.decode(errors='replace').strip()[:300]}"
+                )
+            audio, sr = sf.read(dst_path, dtype="float32")
+            assert sr == SAMPLE_RATE
+        finally:
+            try:
+                os.unlink(dst_path)
+            except OSError:
+                pass
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1).astype(np.float32)
+        result[label] = audio
+    return result

@@ -110,5 +110,11 @@ CONFIG = MetricPromptConfig(
     system_instruction=SYSTEM_INSTRUCTION,
     few_shot_examples=FEW_SHOT_EXAMPLES,
     response_schema=RESPONSE_SCHEMA,
-    input_kind="sentence",  # actually a short clause sequence -- see build_request note in registry.py
+    input_kind="sentence",
+    construct="ACCURACY",
+    metric_key="gvt1_count",
+    unit="count",
+    formula="count of flagged sentences this session (placeholder -- not an error rate)",
+    report1_tag="Verb tense drift",
+    report1_order=3,
 )

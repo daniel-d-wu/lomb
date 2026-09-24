@@ -72,6 +72,7 @@ sandbox's.
 """
 
 import difflib
+import re
 import sys
 from pathlib import Path as _Path
 
@@ -204,6 +205,41 @@ def filter_prompt_leak(
     return kept + rest, dropped
 
 
+# Whisper hallucination guardrail (2026-09-24). A real session produced a
+# 69x "äh" loop that inflated FILLED_PAUSE ~2.7x. Across 83 real transcripts
+# (5,178 segments), real large-v3 speech never repeated one token more than
+# 9x in a row, so 15 leaves a wide margin: only unmistakable loops are
+# dropped. Whisper's own confidence can't be used instead -- it scored the
+# loop MORE confident (avg_logprob -0.119) than normal speech (-0.203).
+REPETITION_RUN_THRESHOLD = 15
+
+
+def _longest_repeat_run(segment: dict) -> int:
+    best = run = 0
+    prev = None
+    for w in segment.get("words", []):
+        token = re.sub(r"[^\w]", "", w.get("word", "").lower())
+        if not token:
+            continue
+        run = run + 1 if token == prev else 1
+        prev = token
+        best = max(best, run)
+    return best
+
+
+def filter_repetition_loops(
+    segments: list[dict], threshold: int = REPETITION_RUN_THRESHOLD,
+) -> tuple[list[dict], list[dict]]:
+    """Drop whole segments where one token repeats >= threshold times in a
+    row (a Whisper decoding loop, not speech). Returns (kept, dropped);
+    the caller decides how to report dropped. Conservative by design: a
+    real learner's "äh, äh, äh, äh" (4x) is kept."""
+    kept, dropped = [], []
+    for s in segments:
+        (dropped if _longest_repeat_run(s) >= threshold else kept).append(s)
+    return kept, dropped
+
+
 def _flatten_and_fill(segments: list[dict]) -> tuple[list[tuple[str, float, float, str]], int]:
     """Flattens every kept segment's words into one chronological list of
     (text, start, end, speaker) tuples, forward-filling any word missing
@@ -286,6 +322,10 @@ def from_whisperx_transcript(
     kept_segments, _dropped_leak_segments = filter_prompt_leak(
         segments, known_prompt_leak=known_prompt_leak, leak_cutoff_seconds=leak_cutoff_seconds
     )
+    kept_segments, _dropped_loop_segments = filter_repetition_loops(kept_segments)
+    # A dropped segment is a hole, not silence: end the turn there, so the
+    # hole never counts as speaking time or as one giant unfilled pause.
+    holes = [(s.get("start", 0.0), s.get("end", 0.0)) for s in _dropped_leak_segments + _dropped_loop_segments]
 
     filled, _dropped_unattributed = _flatten_and_fill(kept_segments)
     if not filled:
@@ -299,7 +339,10 @@ def from_whisperx_transcript(
     group_words: list[Word] = []
     group_speaker = filled[0][3]
     for text, start, end, speaker in filled:
-        if speaker != group_speaker and group_words:
+        crosses_hole = bool(group_words) and any(
+            h_start < start and h_end > group_words[-1].end for h_start, h_end in holes
+        )
+        if group_words and (speaker != group_speaker or crosses_hole):
             turns.append(_turn_from_group(group_speaker, group_words))
             group_words = []
         group_speaker = speaker

@@ -107,4 +107,8 @@ CONFIG = MetricPromptConfig(
     few_shot_examples=FEW_SHOT_EXAMPLES,
     response_schema=RESPONSE_SCHEMA,
     input_kind="sentence",
+    construct="COMPLEXITY",
+    metric_key="structure_breadth_score",
+    unit="score",
+    formula="distinct non-'none' structure labels seen this session -- pipeline.py's own convenience value, pass-through",
 )

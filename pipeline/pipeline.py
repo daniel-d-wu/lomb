@@ -9,10 +9,10 @@ FILLED_PAUSE having since moved off the LLM -- see the 2026-09-06 and
 Ties together every piece built so far, in order:
   assemblyai_adapter.from_assemblyai_transcript()  raw JSON -> Turn objects
   speaker_filter.filter_to_target_speaker()        -> one speaker's turns only
-  speaker_filter.to_sentences() / to_sentence_windows() /
+  speaker_filter.to_sentences() /
     find_formulaic_matches()                       -> per-metric input shapes
-  prefilter.should_run()                           skip LLM calls where safe
-  registry.classify()                              the actual per-metric call
+  prefilter.should_run()                           drop sentences from a batch where safe
+  batching.classify_batch()                        ONE call per LLM metric per session
                                                     (7 metrics; FORMULAIC,
                                                     UNFILLED_PAUSE,
                                                     FILLED_PAUSE, WPM never
@@ -24,11 +24,13 @@ Ties together every piece built so far, in order:
 SCOPE, stated explicitly: as of 2026-09-07, this runs all 11 registered
 metrics -- the full Phase 1 set. Four groups, by how they're computed:
 
-  input_kind == "sentence", one sentence per call:
-    GDD-1, GDD-2, GVT-2, LPF, LP, STRUCTURE_BREADTH
-  input_kind == "sentence", but a WINDOW of several consecutive sentences
-  per call (see speaker_filter.to_sentence_windows()):
-    GVT-1
+  LLM-assisted, ONE call per metric covering every sentence (2026-09-24,
+  see batching.py -- previously one call per sentence, 327 calls on a
+  5-min session):
+    GDD-1, GDD-2, GVT-1, GVT-2, LPF, LP, STRUCTURE_BREADTH
+  (GVT-1 used to run on 3-sentence windows to see cross-sentence tense
+  drift; the batch call gives it the whole ordered list, so windows are
+  no longer used.)
   NOT an LLM call at all -- direct/deterministic computation, zero cost:
     FORMULAIC (regex scan, speaker_filter.find_formulaic_matches())
     FILLED_PAUSE (fixed token lookup, direct_computation.compute_filled_pause())
@@ -111,15 +113,18 @@ they actually live in rather than re-explained here:
   detection -- per Dan's direct instruction to measure it from the
   transcript rather than the audio.
 
-This module does NOT retry, rate-limit, batch, or parallelize calls --
-that's production-hardening, out of scope for a first working pipeline
-pass. It has NOT been run against a live API from inside this sandbox
+This module does NOT retry or rate-limit calls. It does batch them: at
+most one call per LLM metric per session (batching.py). It has NOT been run against a live API from inside this sandbox
 (same api.openai.com egress block documented throughout this project,
 in providers/openai_provider.py and elsewhere) -- see the __main__ block
 and its FakeProvider for exactly what that block does and doesn't prove.
 """
 
+import hashlib
+import inspect
+import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # repo root on sys.path -- prompts/ and transcript_processing/ are both
@@ -127,65 +132,82 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline import prefilter
-from pipeline.direct_computation import compute_filled_pause, compute_unfilled_pause, compute_wpm
-from prompts.formulaic import BUNDLES as FORMULAIC_BUNDLES
-from pipeline.registry import METRIC_PROMPTS, classify
+from pipeline.batching import BATCH_PROMPTS, classify_batch
+from pipeline.registry import DIRECT_FLUENCEMES, METRIC_PROMPTS
 from transcript_processing.assemblyai_adapter import from_assemblyai_transcript
 from transcript_processing.speaker_filter import (
     filter_to_target_speaker,
-    find_formulaic_matches,
+    map_words_to_sentences,
     to_sentences,
-    to_sentence_windows,
 )
 
-SENTENCE_METRICS = ["GDD-1", "GDD-2", "GVT-2", "LPF", "LP", "STRUCTURE_BREADTH"]
-WINDOWED_SENTENCE_METRICS = ["GVT-1"]
-_EXCLUDED = frozenset()
-
-# All four direct/deterministic metrics -- zero calls to classify()/
-# registry.py for any of them, see this module's docstring. Deliberately
-# NOT unioned into _all_groups below: those groups partition
-# registry.METRIC_PROMPTS (7 keys now), and none of these four live in
-# that dict -- including them there would break the partition rather than
-# prove it. DIRECT_METRICS is its own separate, explicit list instead,
-# checked against the full 11-metric set in its own assertion right after.
-DIRECT_METRICS = ["FORMULAIC", "FILLED_PAUSE", "UNFILLED_PAUSE", "WPM"]
-
-# Catch a typo or scope drift here immediately (import time), not silently
-# at runtime: every metric in the three groups below must actually have
-# the input_kind this module assumes for it, and those three groups (run
-# as single sentence, run as a sentence window, deliberately excluded)
-# must partition all 7 keys in registry.METRIC_PROMPTS with nothing left
-# over and nothing double-counted. _EXCLUDED is empty now, but stays in
-# the partition (rather than being deleted) so a future metric that
-# genuinely can't run yet has an obvious, already-wired place to go -- and
-# so this assertion keeps proving "nothing was silently dropped," not just
-# "nothing was silently dropped as of today."
-assert all(METRIC_PROMPTS[k].input_kind == "sentence" for k in SENTENCE_METRICS)
-assert all(METRIC_PROMPTS[k].input_kind == "sentence" for k in WINDOWED_SENTENCE_METRICS)
-_all_groups = [SENTENCE_METRICS, WINDOWED_SENTENCE_METRICS, _EXCLUDED]
-assert set().union(*_all_groups) == set(METRIC_PROMPTS)
-assert sum(len(g) for g in _all_groups) == len(METRIC_PROMPTS), (
-    "a metric key appears in more than one group -- that's double-counting, not just scope drift"
+# Both lists come from registry.py -- never edit them here. A new LLM
+# fluenceme appears in SENTENCE_METRICS by adding its prompts/<name>.py.
+SENTENCE_METRICS = list(METRIC_PROMPTS)
+DIRECT_METRICS = list(DIRECT_FLUENCEMES)
+assert all(METRIC_PROMPTS[k].input_kind == "sentence" for k in SENTENCE_METRICS), (
+    "run_pipeline_from_turns() only knows how to feed sentence-input LLM fluencemes"
 )
 
-# The FULL metric set this module actually reports on -- the 7 LLM-backed
-# keys registry.py knows about, PLUS the 4 direct ones, which deliberately
-# aren't in that dict. This is the "11 registered metrics" count this
-# module's docstring promises -- the complete Phase 1 scope -- proven here
-# rather than just asserted.
-for _direct_key in DIRECT_METRICS:
-    assert _direct_key not in METRIC_PROMPTS, (
-        f"{_direct_key} must not be registered as an LLM metric -- it's direct/deterministic now"
-    )
-_ALL_REPORTED_METRICS = set(METRIC_PROMPTS) | set(DIRECT_METRICS)
-assert len(_ALL_REPORTED_METRICS) == 11, (
-    f"expected 7 LLM metrics + 4 direct metrics == 11 total (the full Phase 1 scope), "
-    f"got {sorted(_ALL_REPORTED_METRICS)}"
-)
+CHUNK_SECONDS = 15 * 60  # one LLM call per metric per 15 minutes of session audio
+MAX_PARALLEL_CALLS = 8   # LLM calls in flight at once
 
 
-def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> dict:
+def _fingerprint(payload) -> str:
+    def stable(o):
+        if isinstance(o, (set, frozenset)):
+            return sorted(o, key=str)
+        return str(o)
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=stable).encode("utf-8")).hexdigest()[:12]
+
+
+def fluenceme_versions() -> dict[str, str]:
+    """Automatic version per fluenceme, stored on each analysis run so a
+    metric change can be traced to a method change. LLM: fingerprint of the
+    exact prompt sent (batch instructions, few-shot, schema). Direct:
+    fingerprint of its compute() source + reference data. Nobody has to
+    remember to bump a version number."""
+    versions = {}
+    for key, cfg in BATCH_PROMPTS.items():
+        versions[key] = _fingerprint([cfg.system_instruction, cfg.few_shot_examples,
+                                      cfg.response_schema, cfg.generation_config_overrides])
+    for key, spec in DIRECT_FLUENCEMES.items():
+        versions[key] = _fingerprint([inspect.getsource(spec.compute), spec.reference])
+    return versions
+
+
+def sentence_start_times(target_turns: list) -> list[float]:
+    """Start time (session seconds) of each to_sentences() entry, from its
+    first word. A sentence with no mapped words inherits the previous
+    sentence's start (never observed; guards the alignment caveat in
+    map_words_to_sentences())."""
+    n = len(to_sentences(target_turns))
+    starts: list[float | None] = [None] * n
+    for w in map_words_to_sentences(target_turns):
+        i = w["sentence_index"]
+        if i < n and starts[i] is None:
+            starts[i] = w["start"]
+    last = 0.0
+    for i, s in enumerate(starts):
+        last = s if s is not None else last
+        starts[i] = last
+    return starts
+
+
+def chunk_sentence_indices(start_times: list[float], chunk_seconds: float = CHUNK_SECONDS) -> list[list[int]]:
+    """Group sentence indices into consecutive time chunks of chunk_seconds
+    (by each sentence's start time). Any session length works: <15 min ->
+    1 chunk, 30 min -> 2, 45 min -> 3, 47 min -> 4. Empty chunks (no
+    target-speaker speech in that window) are dropped."""
+    chunks: dict[int, list[int]] = {}
+    for i, t in enumerate(start_times):
+        chunks.setdefault(int(t // chunk_seconds), []).append(i)
+    return [chunks[k] for k in sorted(chunks)]
+
+
+def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str, *,
+                            chunk_seconds: float = CHUNK_SECONDS,
+                            max_parallel_calls: int = MAX_PARALLEL_CALLS) -> dict:
     """The actual orchestration core -- engine-agnostic as of 2026-09-20.
 
     2026-09-20: split out of what used to be the only run_pipeline()
@@ -226,7 +248,9 @@ def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> di
       {
         "target_speaker_id": str,
         "sentence_count": int,
-        "gvt1_window_count": int,          # sentence-windows for GVT-1
+        "chunk_count": int,                # 15-min slices of session audio with target speech
+        "llm_call_count": int,             # at most (LLM fluencemes x chunk_count)
+        "llm_missing": dict,               # metric -> sentence indices the model's batch answer omitted
         "formulaic_candidate_count": int,  # regex matches found for FORMULAIC
         "filled_pause_count": int,         # occurrences found for FILLED_PAUSE
         "unfilled_pause_count": int,       # occurrences found for UNFILLED_PAUSE
@@ -274,73 +298,47 @@ def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> di
     """
     target_turns = filter_to_target_speaker(turns, target_speaker_id)
     sentences = to_sentences(target_turns)
-    sentence_windows = to_sentence_windows(target_turns)
-    formulaic_matches = find_formulaic_matches(target_turns, FORMULAIC_BUNDLES)
-    filled_pause_occurrences = compute_filled_pause(target_turns)
-    unfilled_pause_occurrences = compute_unfilled_pause(target_turns)
-    wpm_occurrence = compute_wpm(target_turns)
+    chunks = chunk_sentence_indices(sentence_start_times(target_turns), chunk_seconds)
 
     results = {}
 
+    # One LLM call per (metric, 15-min chunk), all run in parallel. Each call
+    # gets that chunk's sentences the prefilter doesn't rule out. Entries stay
+    # one-per-sentence (the shape storage/report already read); a sentence
+    # the model left out of its answer gets output None and is listed in
+    # llm_missing, never silently treated as "no error".
+    jobs = []
     for metric_key in SENTENCE_METRICS:
-        per_sentence = []
-        for sentence in sentences:
-            if not prefilter.should_run(metric_key, sentence):
-                per_sentence.append({"input": sentence, "skipped": True, "output": None})
-                continue
-            output = classify(provider, metric_key, sentence)
-            per_sentence.append({"input": sentence, "skipped": False, "output": output})
-        results[metric_key] = per_sentence
+        for chunk in chunks:
+            to_run = [(i, sentences[i]) for i in chunk if prefilter.should_run(metric_key, sentences[i])]
+            if to_run:
+                jobs.append((metric_key, to_run))
+    with ThreadPoolExecutor(max_workers=max(1, max_parallel_calls)) as pool:
+        futures = [pool.submit(classify_batch, provider, key, to_run) for key, to_run in jobs]
+        job_outputs = [f.result() for f in futures]  # re-raises the first failed call
 
-    # GVT-1 is unfiltered (prefilter.py only ever safely covers GDD-1/
-    # GDD-2's fixed-preposition lookup) and runs once per sentence-WINDOW,
-    # not once per sentence -- see to_sentence_windows()'s docstring for
-    # why a single sentence at a time could never have worked for this
-    # metric.
-    for metric_key in WINDOWED_SENTENCE_METRICS:
-        per_window = []
-        for window in sentence_windows:
-            output = classify(provider, metric_key, window)
-            per_window.append({"input": window, "skipped": False, "output": output})
-        results[metric_key] = per_window
+    outputs_by_metric: dict[str, dict[int, dict]] = {k: {} for k in SENTENCE_METRICS}
+    sent_by_metric: dict[str, set[int]] = {k: set() for k in SENTENCE_METRICS}
+    for (metric_key, to_run), outputs in zip(jobs, job_outputs):
+        outputs_by_metric[metric_key].update(outputs)
+        sent_by_metric[metric_key].update(i for i, _ in to_run)
 
-    # All four DIRECT_METRICS: NOT a classify() call at all -- each is
-    # already a fully-built list of occurrence entries (find_formulaic_
-    # matches() / compute_filled_pause() / compute_unfilled_pause() /
-    # compute_wpm(), all computed above), zero LLM calls, zero cost. The
-    # "input"/"skipped"/"output" shape is kept identical to every
-    # classify()-backed metric's entries (same keys, same meaning) purely
-    # so downstream consumers (report.py, this module's own __main__
-    # checks) don't need a special case just to read these metrics'
-    # results -- "skipped" is always False for all four (there's no
-    # LLM-call decision to skip). See direct_computation.py's module
-    # docstring for the granularity/shape reasoning this shares across all
-    # four (WPM's own docstring explains its one exception: exactly one
-    # session-level entry rather than one per occurrence), and
-    # prompts/formulaic.py / prompts/filled_pause.py /
-    # prompts/unfilled_pause.py for each pause metric's own accuracy
-    # tradeoff.
-    results["FORMULAIC"] = [
-        {
-            "input": f'Candidate: "{match["candidate"]}" | Sentence: "{match["sentence"]}"',
-            "skipped": False,
-            "output": {
-                "formulaic": True,
-                "confidence": "high",
-                "reasoning": (
-                    "Deterministic regex match against the BUNDLES reference list "
-                    "(prompts/formulaic.py) -- no LLM literal-vs-formulaic "
-                    "disambiguation as of 2026-09-05, per Dan's explicit instruction "
-                    "to make FORMULAIC a regex-based metric. See that module's "
-                    "docstring for the accuracy tradeoff this accepts."
-                ),
-            },
-        }
-        for match in formulaic_matches
-    ]
-    results["FILLED_PAUSE"] = filled_pause_occurrences
-    results["UNFILLED_PAUSE"] = unfilled_pause_occurrences
-    results["WPM"] = wpm_occurrence
+    llm_missing = {}
+    for metric_key in SENTENCE_METRICS:
+        outputs, sent = outputs_by_metric[metric_key], sent_by_metric[metric_key]
+        missing = sorted(sent - set(outputs))
+        if missing:
+            llm_missing[metric_key] = missing
+        results[metric_key] = [
+            {"input": s, "skipped": i not in sent, "output": outputs.get(i)}
+            for i, s in enumerate(sentences)
+        ]
+
+    # Direct fluencemes: no LLM call, zero cost. Each one's compute() returns
+    # entries in the same {"input","skipped","output"} shape as the LLM
+    # ones, so storage/report never need a special case to read them.
+    for key, spec in DIRECT_FLUENCEMES.items():
+        results[key] = spec.compute(target_turns)
 
     # Session-level STRUCTURE_BREADTH aggregation: the UNION of distinct
     # structure labels actually produced across every non-skipped sentence
@@ -362,7 +360,7 @@ def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> di
     # separation matters). Guarded against duration_seconds == 0 (an
     # empty/degenerate turn set) -- None, not a ZeroDivisionError or a
     # fabricated 0.0.
-    wpm_info = wpm_occurrence[0]["output"]
+    wpm_info = results["WPM"][0]["output"]
     word_count = wpm_info["word_count"]
     duration_seconds = wpm_info["duration_seconds"]
     wpm_value = round(word_count / (duration_seconds / 60), 1) if duration_seconds > 0 else None
@@ -370,10 +368,14 @@ def run_pipeline_from_turns(provider, turns: list, target_speaker_id: str) -> di
     return {
         "target_speaker_id": target_speaker_id,
         "sentence_count": len(sentences),
-        "gvt1_window_count": len(sentence_windows),
-        "formulaic_candidate_count": len(formulaic_matches),
-        "filled_pause_count": len(filled_pause_occurrences),
-        "unfilled_pause_count": len(unfilled_pause_occurrences),
+        "chunk_count": len(chunks),
+        "chunk_seconds": chunk_seconds,
+        "fluenceme_versions": fluenceme_versions(),
+        "llm_call_count": len(jobs),
+        "llm_missing": llm_missing,
+        "formulaic_candidate_count": len(results["FORMULAIC"]),
+        "filled_pause_count": len(results["FILLED_PAUSE"]),
+        "unfilled_pause_count": len(results["UNFILLED_PAUSE"]),
         "word_count": word_count,
         "duration_seconds": duration_seconds,
         "wpm": wpm_value,
@@ -428,21 +430,25 @@ if __name__ == "__main__":
         """
 
         def __init__(self):
+            import threading
+            self._lock = threading.Lock()  # calls now arrive in parallel
             self.call_count = 0
             self.calls_by_metric = {}
             self._structure_cycle = [
                 ["konjunktiv_ii"], ["dass_clause"], ["konjunktiv_ii"],
                 ["none"], ["weil_clause"], ["dass_clause"],
             ]
-            self._structure_i = 0
 
         def classify(self, config, input_data):
-            self.call_count += 1
-            self.calls_by_metric[config.key] = self.calls_by_metric.get(config.key, 0) + 1
+            with self._lock:
+                self.call_count += 1
+                self.calls_by_metric[config.key] = self.calls_by_metric.get(config.key, 0) + 1
+            items = json.loads(input_data)  # batch input: [{"index", "text"}, ...]
+            return {"results": [{"index": it["index"], **self._answer(config.key, it["index"])} for it in items]}
 
-            if config.key == "STRUCTURE_BREADTH":
-                labels = self._structure_cycle[self._structure_i % len(self._structure_cycle)]
-                self._structure_i += 1
+        def _answer(self, key, index):
+            if key == "STRUCTURE_BREADTH":
+                labels = self._structure_cycle[index % len(self._structure_cycle)]
                 return {"structures": labels, "confidence": "high"}
 
             # FORMULAIC, UNFILLED_PAUSE, FILLED_PAUSE, and WPM are all
@@ -475,7 +481,7 @@ if __name__ == "__main__":
 
     print(f"target_speaker_id:         {result['target_speaker_id']}")
     print(f"sentence_count:            {result['sentence_count']}")
-    print(f"gvt1_window_count:         {result['gvt1_window_count']}")
+    print(f"llm_call_count:            {result['llm_call_count']}")
     print(f"formulaic_candidate_count: {result['formulaic_candidate_count']}")
     print(f"filled_pause_count:        {result['filled_pause_count']}")
     print(f"unfilled_pause_count:      {result['unfilled_pause_count']}")
@@ -493,10 +499,6 @@ if __name__ == "__main__":
         entries = result["results"][key]
         assert len(entries) == result["sentence_count"], f"{key}: expected one entry per sentence"
         print(f"  {key:<20} {len(entries)} entries")
-    for key in WINDOWED_SENTENCE_METRICS:
-        entries = result["results"][key]
-        assert len(entries) == result["gvt1_window_count"], f"{key}: expected one entry per sentence-window"
-        print(f"  {key:<20} {len(entries)} entries")
     _direct_expected_counts = {
         "FORMULAIC": result["formulaic_candidate_count"],
         "FILLED_PAUSE": result["filled_pause_count"],
@@ -510,49 +512,52 @@ if __name__ == "__main__":
         )
         print(f"  {key:<20} {len(entries)} entries")
 
+    print("\n--- Check 1b: at most ONE provider call per LLM metric ---")
+    for key in SENTENCE_METRICS:
+        calls = provider.calls_by_metric.get(key, 0)
+        ran_any = any(not e["skipped"] for e in result["results"][key])
+        assert calls == (1 if ran_any else 0), f"{key}: expected {1 if ran_any else 0} call, got {calls}"
+    assert result["chunk_count"] == 1, "this sample is under 15 min -- expected a single chunk"
+    assert provider.call_count == result["llm_call_count"] <= len(SENTENCE_METRICS)
+    assert result["llm_missing"] == {}, f"FakeProvider answers every index; missing={result['llm_missing']}"
+    print(f"  total calls={provider.call_count} (was one per sentence before 2026-09-24)")
+
+    print("\n--- Check 1c: chunking -- force 20-second chunks on the same transcript ---")
+    chunked_provider = FakeProvider()
+    turns_for_chunks = from_assemblyai_transcript(transcript_json)
+    chunked = run_pipeline_from_turns(chunked_provider, turns_for_chunks, "A", chunk_seconds=20)
+    assert chunked["chunk_count"] > 1, "20s chunks on a ~55s sample should give several chunks"
+    for key in SENTENCE_METRICS:
+        # identical per-sentence verdict shape and skip decisions as the unchunked run
+        assert [e["skipped"] for e in chunked["results"][key]] == [e["skipped"] for e in result["results"][key]]
+        assert chunked_provider.calls_by_metric.get(key, 0) <= chunked["chunk_count"]
+    assert chunked_provider.call_count == chunked["llm_call_count"]
+    print(f"  chunks={chunked['chunk_count']}  calls={chunked_provider.call_count} "
+          f"(<= {len(SENTENCE_METRICS)} metrics x {chunked['chunk_count']} chunks), same per-sentence results")
+
     print("\n--- Check 2: prefilter skip decisions actually took effect ---")
     for key in ("GDD-1", "GDD-2"):
         entries = result["results"][key]
-        actually_called = sum(1 for e in entries if not e["skipped"])
-        expected_called = sum(1 for e in entries if prefilter.should_run(key, e["input"]))
-        assert actually_called == expected_called == provider.calls_by_metric.get(key, 0), (
-            f"{key}: pipeline called classify() {provider.calls_by_metric.get(key, 0)} times, "
-            f"but {actually_called} entries are marked not-skipped and prefilter independently "
-            f"says {expected_called} should have run -- these three numbers must all agree"
+        actually_sent = sum(1 for e in entries if not e["skipped"])
+        expected_sent = sum(1 for e in entries if prefilter.should_run(key, e["input"]))
+        assert actually_sent == expected_sent, (
+            f"{key}: {actually_sent} sentences sent in the batch, but prefilter independently "
+            f"says {expected_sent} should have been -- these must agree"
         )
         skipped = [e["input"] for e in entries if e["skipped"]]
-        print(f"  {key:<8} called={actually_called}  skipped={len(skipped)}  "
+        print(f"  {key:<8} sent={actually_sent}  skipped={len(skipped)}  "
               f"skipped sentences={skipped}")
-    # Metrics with no pre-filter must never skip -- should_run() always
-    # True for them, so every entry should have been called. GVT-1 is
-    # unfiltered too, but its entries are sentence-WINDOWS, not single
-    # sentences -- prefilter.should_run() was designed for single
-    # sentences (see prefilter.py's docstring), so this checks GVT-1
-    # separately rather than running should_run() against windowed input
-    # it was never meant to see.
-    for key in ("GVT-2", "LPF", "LP", "STRUCTURE_BREADTH"):
+    for key in ("GVT-1", "GVT-2", "LPF", "LP", "STRUCTURE_BREADTH"):
         entries = result["results"][key]
         assert all(not e["skipped"] for e in entries), f"{key} is unfiltered -- nothing should be skipped"
-    print("  (GVT-2, LPF, LP, STRUCTURE_BREADTH correctly never skipped -- unfiltered by design)")
+    print("  (GVT-1, GVT-2, LPF, LP, STRUCTURE_BREADTH correctly never skipped -- unfiltered by design)")
 
-    print("\n--- Check 2b: GVT-1 sentence-windowing wiring ---")
-    gvt1_entries = result["results"]["GVT-1"]
-    assert all(not e["skipped"] for e in gvt1_entries), "GVT-1 is unfiltered -- nothing should be skipped"
-    assert provider.calls_by_metric.get("GVT-1", 0) == result["gvt1_window_count"], (
-        "GVT-1 should be called exactly once per sentence-window, no more, no fewer"
-    )
-    # Every window should span more than one sentence once there are more
-    # sentences than the window size -- otherwise this degenerated back
-    # into single-sentence feeding without anyone noticing.
-    multi_sentence_windows = sum(1 for e in gvt1_entries if len(e["input"].split(". ")) > 1 or e["input"].count(".") > 1)
-    print(f"  GVT-1 called={provider.calls_by_metric.get('GVT-1', 0)}  "
-          f"windows={result['gvt1_window_count']}  "
-          f"windows spanning >1 sentence={multi_sentence_windows}")
-    if result["sentence_count"] > 3:
-        assert multi_sentence_windows > 0, (
-            "expected at least one GVT-1 window to bundle multiple sentences together -- "
-            "if none do, this transcript can't actually exercise the windowing fix"
-        )
+    print("\n--- Check 2b: batch answers map back to the right sentence ---")
+    for key in SENTENCE_METRICS:
+        for i, e in enumerate(result["results"][key]):
+            if not e["skipped"]:
+                assert e["output"]["sentence_indices"] == [i], f"{key}: entry {i} got {e['output']['sentence_indices']}"
+    print("  every non-skipped entry's output.sentence_indices == [its own position]")
 
     print("\n--- Check 2c: FORMULAIC regex wiring (no LLM call at all, as of 2026-09-05) ---")
     formulaic_entries = result["results"]["FORMULAIC"]
@@ -662,18 +667,18 @@ if __name__ == "__main__":
           f"wpm={result['wpm']}")
 
     print("\n--- Check 3: structure_breadth_score is a distinct-label union, not a raw count ---")
-    total_structure_calls = provider.calls_by_metric["STRUCTURE_BREADTH"]
-    assert total_structure_calls == result["sentence_count"]
-    assert result["structure_breadth_score"] < total_structure_calls, (
-        "FakeProvider's cycle deliberately repeats labels across calls -- the aggregated "
-        "score must come out lower than the call count, or aggregation isn't deduplicating"
+    judged = sum(1 for e in result["results"]["STRUCTURE_BREADTH"] if not e["skipped"])
+    assert judged == result["sentence_count"]
+    assert result["structure_breadth_score"] < judged, (
+        "FakeProvider's cycle deliberately repeats labels across sentences -- the aggregated "
+        "score must come out lower than the sentence count, or aggregation isn't deduplicating"
     )
     assert result["structure_breadth_labels"] == sorted(
         {"konjunktiv_ii", "dass_clause", "weil_clause"}
     ), result["structure_breadth_labels"]
-    print(f"  {total_structure_calls} STRUCTURE_BREADTH calls -> "
+    print(f"  {judged} STRUCTURE_BREADTH sentence verdicts -> "
           f"breadth_score={result['structure_breadth_score']} distinct labels "
-          f"(not {total_structure_calls}) -- deduplication confirmed, 'none' correctly excluded")
+          f"(not {judged}) -- deduplication confirmed, 'none' correctly excluded")
 
     print("\nAll orchestration checks passed. "
           "Reminder: this proves the WIRING, not linguistic correctness -- "

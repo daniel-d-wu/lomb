@@ -123,22 +123,16 @@ import sys
 from html import escape
 from pathlib import Path
 
-TAGS = {
-    "GDD-1": "Case: always-dative preposition",
-    "GDD-2": "Case: two-way preposition (Wechselpräposition)",
-    "GVT-1": "Verb tense drift",
-    "GVT-2": "Verb position",
-    "LPF": "Preposition (L1 transfer)",
-    "LP": "Word choice / collocation",
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from pipeline.registry import METRIC_PROMPTS, REPORT1_ERROR_METRICS  # noqa: E402
 
-# The 6 metrics claude/lomb_reporting_requirements_v1.md designated for
-# Report 1's accuracy.errors[] cap, in the order that doc lists them --
-# not every one of these is necessarily present in a given
-# pipeline_result.json (GVT-1 in particular, see pipeline.py's own scope
-# notes), and this module treats "designated but absent" as its own
-# category rather than conflating it with "ran, found nothing."
-ERROR_METRICS = ["GDD-1", "GDD-2", "GVT-1", "GVT-2", "LPF", "LP"]
+# Report 1's accuracy.errors[] metrics and their labels come from each
+# prompt file's report1_tag/report1_order (2026-09-24) -- a new fluenceme
+# with a report1_tag shows up here automatically. A designated metric
+# absent from a given pipeline_result.json is reported as "not wired",
+# distinct from "ran, found nothing."
+TAGS = {key: METRIC_PROMPTS[key].report1_tag for key in REPORT1_ERROR_METRICS}
+ERROR_METRICS = REPORT1_ERROR_METRICS
 CAP_PER_METRIC = 2
 CAP_TOTAL = CAP_PER_METRIC * len(ERROR_METRICS)  # 12, per the 2026-09-02 decision
 

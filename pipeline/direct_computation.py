@@ -51,15 +51,18 @@ regardless of computation path -- that's the point.
 """
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 # repo root on sys.path -- prompts/ and transcript_processing/ are both
 # siblings of this file's own new directory (pipeline/) post-reorg.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from prompts.filled_pause import FILLER_TOKENS
+from prompts.formulaic import BUNDLES as FORMULAIC_BUNDLES
 from prompts.unfilled_pause import PAUSE_THRESHOLD_SECONDS
-from transcript_processing.speaker_filter import Turn, map_words_to_sentences
+from transcript_processing.speaker_filter import Turn, find_formulaic_matches, map_words_to_sentences
 
 
 def _boundary_type(prev_entry: dict | None, same_sentence: bool) -> str:
@@ -241,6 +244,61 @@ def compute_wpm(target_turns: list[Turn]) -> list[dict]:
             "sentence_indices": [],
         },
     }]
+
+
+def compute_formulaic(target_turns: list[Turn]) -> list[dict]:
+    """FORMULAIC entries: one per BUNDLES regex match (no LLM call). Moved
+    here from pipeline.py so every direct fluenceme is just a function in
+    DIRECT_FLUENCEMES below."""
+    return [
+        {
+            "input": f'Candidate: "{match["candidate"]}" | Sentence: "{match["sentence"]}"',
+            "skipped": False,
+            "output": {
+                "formulaic": True,
+                "confidence": "high",
+                "reasoning": (
+                    "Deterministic regex match against the BUNDLES reference list "
+                    "(prompts/formulaic.py) -- no LLM literal-vs-formulaic "
+                    "disambiguation as of 2026-09-05, per Dan's explicit instruction "
+                    "to make FORMULAIC a regex-based metric. See that module's "
+                    "docstring for the accuracy tradeoff this accepts."
+                ),
+            },
+        }
+        for match in find_formulaic_matches(target_turns, FORMULAIC_BUNDLES)
+    ]
+
+
+@dataclass(frozen=True, kw_only=True)
+class DirectFluenceme:
+    """A fluenceme computed in plain Python (no LLM call). Same storage /
+    report fields as MetricPromptConfig. Adding one = write its compute
+    function and add one entry to DIRECT_FLUENCEMES."""
+    key: str
+    compute: Callable[[list[Turn]], list[dict]]  # target-speaker turns -> result entries
+    construct: str
+    metric_key: str
+    unit: str
+    formula: str
+    reference: object = None  # word lists / thresholds compute() depends on -- part of its version fingerprint
+
+
+DIRECT_FLUENCEMES: dict[str, DirectFluenceme] = {d.key: d for d in [
+    DirectFluenceme(key="FORMULAIC", compute=compute_formulaic, construct="COMPLEXITY",
+                    metric_key="formulaic_count", unit="count",
+                    formula="count of BUNDLES regex matches this session", reference=FORMULAIC_BUNDLES),
+    DirectFluenceme(key="FILLED_PAUSE", compute=compute_filled_pause, construct="FLUENCY",
+                    metric_key="filled_pause_count", unit="count",
+                    formula="count of filler-token occurrences this session", reference=FILLER_TOKENS),
+    DirectFluenceme(key="UNFILLED_PAUSE", compute=compute_unfilled_pause, construct="FLUENCY",
+                    metric_key="unfilled_pause_count", unit="count",
+                    formula="count of over-threshold gap occurrences this session",
+                    reference=PAUSE_THRESHOLD_SECONDS),
+    DirectFluenceme(key="WPM", compute=compute_wpm, construct="FLUENCY",
+                    metric_key="wpm", unit="wpm",
+                    formula="word_count / (duration_seconds / 60) -- pipeline.py's own convenience value, pass-through"),
+]}
 
 
 if __name__ == "__main__":

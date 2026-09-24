@@ -1,5 +1,9 @@
 """
-Registry for all 7 LLM-assisted metrics.
+Registry for every fluenceme: LLM ones auto-discovered from prompts/*.py
+(each file's CONFIG), direct ones from direct_computation.DIRECT_FLUENCEMES.
+As of 2026-09-24 this is the single source of truth the pipeline, storage
+taxonomy and Report 1 all read from -- adding an LLM fluenceme is adding one
+prompts/<name>.py file, nothing else.
 
 This file now holds ONLY provider-agnostic content -- the lookup table
 mapping metric key -> (instruction text, few-shot examples, output
@@ -39,35 +43,58 @@ from pathlib import Path
 # for us automatically.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline.metric_types import MetricPromptConfig  # noqa: F401 (re-exported for convenience)
+import importlib
+import pkgutil
 
-from prompts.gdd1 import CONFIG as GDD1_CONFIG
-from prompts.gdd2 import CONFIG as GDD2_CONFIG
-from prompts.gvt1 import CONFIG as GVT1_CONFIG
-from prompts.gvt2 import CONFIG as GVT2_CONFIG
-from prompts.lpf import CONFIG as LPF_CONFIG
-from prompts.lp import CONFIG as LP_CONFIG
-from prompts.structure_breadth import CONFIG as STRUCTURE_BREADTH_CONFIG
+import prompts
+from pipeline.direct_computation import DIRECT_FLUENCEMES
+from pipeline.metric_types import MetricPromptConfig
 
-METRIC_PROMPTS: dict[str, MetricPromptConfig] = {
-    "GDD-1": GDD1_CONFIG,
-    "GDD-2": GDD2_CONFIG,
-    "GVT-1": GVT1_CONFIG,
-    "GVT-2": GVT2_CONFIG,
-    "LPF": LPF_CONFIG,
-    "LP": LP_CONFIG,
-    "STRUCTURE_BREADTH": STRUCTURE_BREADTH_CONFIG,
-}
+VALID_CONSTRUCTS = {"ACCURACY", "COMPLEXITY", "FLUENCY"}
 
-assert len(METRIC_PROMPTS) == 7, (
-    "expected exactly 7 LLM-assisted metrics (FORMULAIC, UNFILLED_PAUSE, "
-    "FILLED_PAUSE are all direct computations now, not here)"
-)
-for _removed in ("FORMULAIC", "UNFILLED_PAUSE", "FILLED_PAUSE"):
-    assert _removed not in METRIC_PROMPTS, (
-        f"{_removed} must not be re-registered as an LLM metric -- it's a deterministic "
-        "direct computation now (see direct_computation.py / speaker_filter.find_formulaic_matches())"
-    )
+
+def _discover_llm_fluencemes() -> dict[str, MetricPromptConfig]:
+    """Every prompts/<name>.py that defines CONFIG = MetricPromptConfig(...)
+    is an LLM fluenceme -- no list to maintain here. Files without a CONFIG
+    (formulaic.py, filled_pause.py, unfilled_pause.py hold reference data
+    for direct fluencemes) are skipped."""
+    found: dict[str, MetricPromptConfig] = {}
+    for module_info in pkgutil.iter_modules(prompts.__path__):
+        config = getattr(importlib.import_module(f"prompts.{module_info.name}"), "CONFIG", None)
+        if not isinstance(config, MetricPromptConfig):
+            continue
+        if config.key in found:
+            raise ValueError(f"two prompt files both declare fluenceme key {config.key!r}")
+        found[config.key] = config
+    return dict(sorted(found.items()))
+
+
+METRIC_PROMPTS: dict[str, MetricPromptConfig] = _discover_llm_fluencemes()
+
+# Structural checks (not hardcoded counts): a new fluenceme must not reuse
+# a key, a storage metric_key, or name an unknown construct.
+_overlap = set(METRIC_PROMPTS) & set(DIRECT_FLUENCEMES)
+assert not _overlap, f"fluenceme key(s) registered as both LLM and direct: {sorted(_overlap)}"
+_all_specs = list(METRIC_PROMPTS.values()) + list(DIRECT_FLUENCEMES.values())
+_metric_keys = [s.metric_key for s in _all_specs]
+assert len(_metric_keys) == len(set(_metric_keys)), f"duplicate metric_key across fluencemes: {_metric_keys}"
+for _spec in _all_specs:
+    assert _spec.construct in VALID_CONSTRUCTS, f"{_spec.key}: unknown construct {_spec.construct!r}"
+
+# Report 1's accuracy.errors[] metrics, in display order -- derived from
+# each prompt file's report1_tag, not a separate list in report.py.
+REPORT1_ERROR_METRICS: list[str] = [
+    c.key for c in sorted(METRIC_PROMPTS.values(), key=lambda c: (c.report1_order, c.key))
+    if c.report1_tag is not None
+]
+
+
+def taxonomy_rows() -> list[tuple[str, str, str, str, str, str]]:
+    """(feature_key, construct_key, computation_path, metric_key, unit, formula)
+    for every fluenceme -- what storage seeds its taxonomy tables from."""
+    rows = [(c.key, c.construct, "llm", c.metric_key, c.unit, c.formula) for c in METRIC_PROMPTS.values()]
+    rows += [(d.key, d.construct, "direct", d.metric_key, d.unit, d.formula) for d in DIRECT_FLUENCEMES.values()]
+    return rows
 
 
 def classify(provider, metric_key: str, input_data):

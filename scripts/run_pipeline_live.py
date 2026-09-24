@@ -75,7 +75,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pipeline.pipeline import (
     run_pipeline,
     SENTENCE_METRICS,
-    WINDOWED_SENTENCE_METRICS,
     DIRECT_METRICS,
 )
 from providers.openai_provider import OpenAIProvider
@@ -100,16 +99,17 @@ def main() -> int:
     provider = OpenAIProvider()
     print(f"Transcript: {transcript_path}")
     print(f"Model: {provider.model}")
-    print(f"Running {len(SENTENCE_METRICS)} single-sentence metrics + "
-          f"{len(WINDOWED_SENTENCE_METRICS)} sentence-window metric (all "
-          f"against the live API) + {len(DIRECT_METRICS)} direct/"
+    print(f"Running {len(SENTENCE_METRICS)} LLM metrics (one live API call each) "
+          f"+ {len(DIRECT_METRICS)} direct/"
           f"deterministic metrics (free, no API call) against speaker "
           f"{TARGET_SPEAKER!r}'s turns...\n")
 
     result = run_pipeline(provider, transcript_json, target_speaker_id=TARGET_SPEAKER)
 
     print(f"sentence_count:            {result['sentence_count']}")
-    print(f"gvt1_window_count:         {result['gvt1_window_count']}")
+    print(f"llm_call_count:            {result['llm_call_count']}")
+    if result["llm_missing"]:
+        print(f"MISSING from batch answers: {result['llm_missing']}")
     print(f"formulaic_candidate_count: {result['formulaic_candidate_count']}")
     print(f"filled_pause_count:        {result['filled_pause_count']}")
     print(f"unfilled_pause_count:      {result['unfilled_pause_count']}\n")
@@ -121,21 +121,14 @@ def main() -> int:
                 print(f"  SKIPPED (pre-filter)  {entry['input']!r}")
                 continue
             out = entry["output"]
+            if out is None:
+                print(f"  MISSING (not in batch answer)  {entry['input']!r}")
+                continue
             flag = out.get("error", out.get("structures"))
             print(f"  {flag!s:<30} {entry['input']!r}")
             if out.get("reasoning"):
                 print(f"      reasoning: {out['reasoning']}")
-        print()
-
-    for metric_key in WINDOWED_SENTENCE_METRICS:
-        print(f"--- {metric_key} (sentence windows) ---")
-        for entry in result["results"][metric_key]:
-            out = entry["output"]
-            flag = out.get("error")
-            print(f"  {flag!s:<10} window: {entry['input']!r}")
-            if out.get("reasoning"):
-                print(f"      reasoning: {out['reasoning']}")
-            if flag and out.get("corrected"):
+            if out.get("error") and out.get("corrected"):
                 print(f"      corrected: {out['corrected']!r}")
         print()
 

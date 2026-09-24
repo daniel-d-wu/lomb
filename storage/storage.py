@@ -59,6 +59,7 @@ direct_computation.py, speaker_filter.py for the same practice):
 
 import json
 import sqlite3
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,6 +98,9 @@ CREATE TABLE IF NOT EXISTS transcripts (
     session_id                TEXT NOT NULL REFERENCES sessions(session_id),
     audio_id                  TEXT REFERENCES audio_assets(audio_id),
     engine                    TEXT NOT NULL,
+    asr_model                 TEXT,
+    diarization_model         TEXT,
+    asr_settings_json         TEXT,
     raw_json_uri              TEXT NOT NULL,
     target_speaker_label      TEXT,
     speaker_resolution_method TEXT,
@@ -105,6 +109,19 @@ CREATE TABLE IF NOT EXISTS transcripts (
     consent_for_training      BOOLEAN NOT NULL DEFAULT 0,
     expires_at                TEXT,
     deleted_at                TEXT
+);
+
+-- One row per analysis of a transcript (schema v1.3): the LLM model, the
+-- fingerprint of every fluenceme prompt actually sent, and the analysis
+-- settings. Everything an analysis writes points back here via run_id.
+CREATE TABLE IF NOT EXISTS analysis_runs (
+    run_id               TEXT PRIMARY KEY,
+    session_id           TEXT NOT NULL REFERENCES sessions(session_id),
+    transcript_id        TEXT NOT NULL REFERENCES transcripts(transcript_id),
+    llm_model            TEXT NOT NULL,
+    prompt_versions_json TEXT NOT NULL,
+    settings_json        TEXT NOT NULL,
+    created_at           TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS constructs (
@@ -131,6 +148,7 @@ CREATE TABLE IF NOT EXISTS information_items (
     item_id        TEXT PRIMARY KEY,
     session_id     TEXT NOT NULL REFERENCES sessions(session_id),
     transcript_id  TEXT REFERENCES transcripts(transcript_id),
+    run_id         TEXT NOT NULL REFERENCES analysis_runs(run_id),
     feature_key    TEXT NOT NULL REFERENCES linguistic_features(feature_key),
     utterance_ref  TEXT,
     input_ref      TEXT NOT NULL,
@@ -144,61 +162,47 @@ CREATE TABLE IF NOT EXISTS metric_values (
     value_id      TEXT PRIMARY KEY,
     session_id    TEXT NOT NULL REFERENCES sessions(session_id),
     transcript_id TEXT REFERENCES transcripts(transcript_id),
+    run_id        TEXT NOT NULL REFERENCES analysis_runs(run_id),
     metric_key    TEXT NOT NULL REFERENCES metric_definitions(metric_key),
     value         FLOAT NOT NULL,
     computed_at   TEXT NOT NULL,
-    UNIQUE(session_id, metric_key)
+    UNIQUE(run_id, metric_key)
 );
 
 CREATE TABLE IF NOT EXISTS report2_exports (
     export_id      TEXT PRIMARY KEY,
     session_id     TEXT NOT NULL REFERENCES sessions(session_id),
+    run_id         TEXT NOT NULL REFERENCES analysis_runs(run_id),
     storage_uri    TEXT NOT NULL,
     format         TEXT NOT NULL DEFAULT 'xlsx',
     row_count      INTEGER,
     generated_at   TEXT NOT NULL
 );
 
--- Report 1. Schema per docs/lomb_data_schema_v1.md's REPORT 1 section --
--- scoped out when this file was first built (see module docstring's
--- OUT-OF-SCOPE note, now stale as of 2026-09-23: this table closes that
--- gap). UNIQUE(session_id) matches the schema doc's own note: one
--- current Report 1 per session, add a version column later if history
--- ever matters.
+-- Report 1, per docs/lomb_data_schema_v1.md v1.3: one per analysis run
+-- (the LLM model lives on analysis_runs, not here).
 CREATE TABLE IF NOT EXISTS report_snapshots (
     report_id        TEXT PRIMARY KEY,
     session_id       TEXT NOT NULL REFERENCES sessions(session_id),
     transcript_id    TEXT REFERENCES transcripts(transcript_id),
+    run_id           TEXT NOT NULL REFERENCES analysis_runs(run_id),
     payload_json     TEXT NOT NULL,
-    diagnosis_model  TEXT,
     generated_at     TEXT NOT NULL,
-    UNIQUE(session_id)
+    UNIQUE(run_id)
 );
 """
+SCHEMA_VERSION = "1.3"
 
-# Placeholder taxonomy -- see module docstring's PLACEHOLDER section.
-# feature_key values match pipeline.py's own metric_key strings exactly
-# (SENTENCE_METRICS + WINDOWED_SENTENCE_METRICS + DIRECT_METRICS), so a
-# pipeline.py result's "results" dict keys map onto linguistic_features
-# rows with no translation table needed. metric_key values are a plain,
-# undesigned stand-in (mostly "<feature>_count", lowercased) -- NOT
-# claude/lomb_metric_architecture_v1.md's eventual real metric_key set
-# ('gvt1_error_rate', etc.), which needs a real Metric Aggregator this
-# project hasn't built yet (see module docstring).
-PHASE1_TAXONOMY = [
-    # (feature_key, construct_key, computation_path, metric_key, unit, formula)
-    ("GDD-1", "ACCURACY", "llm", "gdd1_count", "count", "count of flagged sentences this session (placeholder -- not an error rate)"),
-    ("GDD-2", "ACCURACY", "llm", "gdd2_count", "count", "count of flagged sentences this session (placeholder -- not an error rate)"),
-    ("GVT-1", "ACCURACY", "llm", "gvt1_count", "count", "count of flagged sentence-windows this session (placeholder -- not an error rate)"),
-    ("GVT-2", "ACCURACY", "llm", "gvt2_count", "count", "count of flagged sentences this session (placeholder -- not an error rate)"),
-    ("LPF", "ACCURACY", "llm", "lpf_count", "count", "count of flagged sentences this session (placeholder -- not an error rate)"),
-    ("LP", "ACCURACY", "llm", "lp_count", "count", "count of flagged sentences this session (placeholder -- not an error rate)"),
-    ("STRUCTURE_BREADTH", "COMPLEXITY", "llm", "structure_breadth_score", "score", "distinct non-'none' structure labels seen this session -- pipeline.py's own convenience value, pass-through"),
-    ("FORMULAIC", "COMPLEXITY", "direct", "formulaic_count", "count", "count of BUNDLES regex matches this session"),
-    ("FILLED_PAUSE", "FLUENCY", "direct", "filled_pause_count", "count", "count of filler-token occurrences this session"),
-    ("UNFILLED_PAUSE", "FLUENCY", "direct", "unfilled_pause_count", "count", "count of over-threshold gap occurrences this session"),
-    ("WPM", "FLUENCY", "direct", "wpm", "wpm", "word_count / (duration_seconds / 60) -- pipeline.py's own convenience value, pass-through"),
-]
+# Taxonomy rows (feature_key, construct_key, computation_path, metric_key,
+# unit, formula), one per fluenceme. Derived from pipeline/registry.py as
+# of 2026-09-24 -- each fluenceme declares these in its own file, so a new
+# one is seeded here automatically. metric_key values are still the
+# placeholder "<feature>_count" set, not claude/lomb_metric_architecture_v1.md's
+# eventual real ones (see module docstring).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from pipeline.registry import taxonomy_rows  # noqa: E402
+
+PHASE1_TAXONOMY = taxonomy_rows()
 
 _CONSTRUCTS = [
     ("FLUENCY", "Fluency"),
@@ -234,34 +238,38 @@ class StorageRepository(ABC):
     @abstractmethod
     def create_transcript(self, transcript_id: str, session_id: str, engine: str, raw_json_uri: str,
                            *, audio_id: str | None = None, target_speaker_label: str | None = None,
-                           speaker_resolution_method: str | None = None) -> None: ...
+                           speaker_resolution_method: str | None = None, asr_model: str | None = None,
+                           diarization_model: str | None = None, asr_settings: dict | None = None) -> None: ...
+
+    @abstractmethod
+    def create_analysis_run(self, run_id: str, session_id: str, transcript_id: str, *, llm_model: str,
+                             prompt_versions: dict, settings: dict) -> None: ...
 
     @abstractmethod
     def ensure_taxonomy_seeded(self) -> None: ...
 
     @abstractmethod
     def write_information_item(self, item_id: str, session_id: str, feature_key: str, input_ref: str,
-                                output: dict, *, transcript_id: str | None = None,
+                                output: dict, *, run_id: str, transcript_id: str | None = None,
                                 utterance_ref: str | None = None, review_status: str = "unreviewed") -> None: ...
 
     @abstractmethod
     def write_metric_value(self, value_id: str, session_id: str, metric_key: str, value: float,
-                            *, transcript_id: str | None = None) -> None: ...
+                            *, run_id: str, transcript_id: str | None = None) -> None: ...
 
     @abstractmethod
     def create_report2_export(self, export_id: str, session_id: str, storage_uri: str,
-                               *, format: str = "xlsx", row_count: int | None = None) -> None: ...
+                               *, run_id: str, format: str = "xlsx", row_count: int | None = None) -> None: ...
 
     @abstractmethod
     def create_report_snapshot(self, report_id: str, session_id: str, payload_json: str,
-                                *, transcript_id: str | None = None,
-                                diagnosis_model: str | None = None) -> None: ...
+                                *, run_id: str, transcript_id: str | None = None) -> None: ...
 
     @abstractmethod
-    def list_information_items(self, session_id: str) -> list[dict]: ...
+    def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
 
     @abstractmethod
-    def list_metric_values(self, session_id: str) -> list[dict]: ...
+    def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
 
 
 class SQLiteStorageRepository(StorageRepository):
@@ -275,6 +283,15 @@ class SQLiteStorageRepository(StorageRepository):
     def __init__(self, db_path: str | Path):
         self.db_path = str(db_path)
         with self._connect() as conn:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(information_items)")]
+            if cols and "run_id" not in cols:
+                # CREATE TABLE IF NOT EXISTS can't add columns or change the
+                # UNIQUE constraints v1.3 changed -- fail loudly rather than
+                # write into a half-old schema.
+                raise RuntimeError(
+                    f"{self.db_path} was created with a schema older than v{SCHEMA_VERSION} "
+                    "(no analysis_runs/run_id). Use a new --db path."
+                )
             conn.executescript(DDL)
 
     def _connect(self) -> sqlite3.Connection:
@@ -336,19 +353,35 @@ class SQLiteStorageRepository(StorageRepository):
     # --- transcripts ------------------------------------------------------
 
     def create_transcript(self, transcript_id, session_id, engine, raw_json_uri, *,
-                           audio_id=None, target_speaker_label=None, speaker_resolution_method=None) -> None:
+                           audio_id=None, target_speaker_label=None, speaker_resolution_method=None,
+                           asr_model=None, diarization_model=None, asr_settings=None) -> None:
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO transcripts
-                    (transcript_id, session_id, audio_id, engine, raw_json_uri,
-                     target_speaker_label, speaker_resolution_method, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
+                     asr_settings_json, raw_json_uri, target_speaker_label, speaker_resolution_method, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(transcript_id) DO UPDATE SET
                     target_speaker_label = excluded.target_speaker_label
                 """,
-                (transcript_id, session_id, audio_id, engine, raw_json_uri,
-                 target_speaker_label, speaker_resolution_method, _now()),
+                (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
+                 json.dumps(asr_settings, ensure_ascii=False) if asr_settings is not None else None,
+                 raw_json_uri, target_speaker_label, speaker_resolution_method, _now()),
+            )
+
+    # --- analysis_runs --------------------------------------------------------
+
+    def create_analysis_run(self, run_id, session_id, transcript_id, *, llm_model, prompt_versions, settings) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO analysis_runs
+                    (run_id, session_id, transcript_id, llm_model, prompt_versions_json, settings_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (run_id, session_id, transcript_id, llm_model,
+                 json.dumps(prompt_versions, sort_keys=True), json.dumps(settings, sort_keys=True), _now()),
             )
 
     # --- taxonomy (lookup tables) ------------------------------------------
@@ -380,77 +413,79 @@ class SQLiteStorageRepository(StorageRepository):
     # --- information_items --------------------------------------------------
 
     def write_information_item(self, item_id, session_id, feature_key, input_ref, output, *,
-                                transcript_id=None, utterance_ref=None, review_status="unreviewed") -> None:
+                                run_id, transcript_id=None, utterance_ref=None, review_status="unreviewed") -> None:
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO information_items
-                    (item_id, session_id, transcript_id, feature_key, utterance_ref,
+                    (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
                      input_ref, output_json, review_status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(item_id) DO NOTHING
                 """,
-                (item_id, session_id, transcript_id, feature_key, utterance_ref,
+                (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
                  input_ref, json.dumps(output, ensure_ascii=False), review_status, _now()),
             )
 
-    def list_information_items(self, session_id: str) -> list[dict]:
+    def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        query = "SELECT * FROM information_items WHERE session_id = ?"
+        params: tuple = (session_id,)
+        if run_id is not None:
+            query += " AND run_id = ?"
+            params += (run_id,)
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM information_items WHERE session_id = ? ORDER BY created_at", (session_id,)
-            ).fetchall()
+            rows = conn.execute(query + " ORDER BY created_at", params).fetchall()
         return [dict(r) for r in rows]
 
     # --- metric_values -----------------------------------------------------
 
-    def write_metric_value(self, value_id, session_id, metric_key, value, *, transcript_id=None) -> None:
+    def write_metric_value(self, value_id, session_id, metric_key, value, *, run_id, transcript_id=None) -> None:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO metric_values (value_id, session_id, transcript_id, metric_key, value, computed_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(session_id, metric_key) DO UPDATE SET
-                    value = excluded.value, computed_at = excluded.computed_at, transcript_id = excluded.transcript_id
-                """,
-                (value_id, session_id, transcript_id, metric_key, value, _now()),
+                INSERT INTO metric_values (value_id, session_id, transcript_id, run_id, metric_key, value, computed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,  # plain INSERT: re-analysis is a new run_id, so a repeat (run_id, metric_key) is a bug -- fail loudly
+                (value_id, session_id, transcript_id, run_id, metric_key, value, _now()),
             )
 
-    def list_metric_values(self, session_id: str) -> list[dict]:
+    def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        query = "SELECT * FROM metric_values WHERE session_id = ?"
+        params: tuple = (session_id,)
+        if run_id is not None:
+            query += " AND run_id = ?"
+            params += (run_id,)
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM metric_values WHERE session_id = ? ORDER BY metric_key", (session_id,)
-            ).fetchall()
+            rows = conn.execute(query + " ORDER BY metric_key", params).fetchall()
         return [dict(r) for r in rows]
 
     # --- report2_exports -----------------------------------------------------
 
-    def create_report2_export(self, export_id, session_id, storage_uri, *, format="xlsx", row_count=None) -> None:
+    def create_report2_export(self, export_id, session_id, storage_uri, *, run_id, format="xlsx", row_count=None) -> None:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO report2_exports (export_id, session_id, storage_uri, format, row_count, generated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO report2_exports (export_id, session_id, run_id, storage_uri, format, row_count, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(export_id) DO UPDATE SET
                     storage_uri = excluded.storage_uri, row_count = excluded.row_count, generated_at = excluded.generated_at
                 """,
-                (export_id, session_id, storage_uri, format, row_count, _now()),
+                (export_id, session_id, run_id, storage_uri, format, row_count, _now()),
             )
 
     # --- report_snapshots -----------------------------------------------------
 
-    def create_report_snapshot(self, report_id, session_id, payload_json, *,
-                                transcript_id=None, diagnosis_model=None) -> None:
+    def create_report_snapshot(self, report_id, session_id, payload_json, *, run_id, transcript_id=None) -> None:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO report_snapshots (report_id, session_id, transcript_id, payload_json, diagnosis_model, generated_at)
+                INSERT INTO report_snapshots (report_id, session_id, transcript_id, run_id, payload_json, generated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(session_id) DO UPDATE SET
-                    report_id = excluded.report_id, transcript_id = excluded.transcript_id,
-                    payload_json = excluded.payload_json, diagnosis_model = excluded.diagnosis_model,
+                ON CONFLICT(run_id) DO UPDATE SET
+                    report_id = excluded.report_id, payload_json = excluded.payload_json,
                     generated_at = excluded.generated_at
                 """,
-                (report_id, session_id, transcript_id, payload_json, diagnosis_model, _now()),
+                (report_id, session_id, transcript_id, run_id, payload_json, _now()),
             )
 
 
@@ -480,9 +515,12 @@ def persist_pipeline_result(
     transcript_id: str,
     result: dict,
     id_factory,
+    *,
+    run_id: str,
 ) -> dict:
     """Writes one run_pipeline_from_turns()/run_pipeline() result into
-    information_items + metric_values for one session -- the actual
+    information_items + metric_values for one analysis run (run_id, which
+    the caller created via create_analysis_run() first) -- the actual
     'take a pipeline result and produce real rows in the data tables'
     step, kept in storage.py (not the orchestration script) so this
     mapping is the same regardless of which engine's adapter produced
@@ -514,6 +552,7 @@ def persist_pipeline_result(
                 feature_key=feature_key,
                 input_ref=entry["input"],
                 output=output,
+                run_id=run_id,
                 transcript_id=transcript_id,
                 utterance_ref=utterance_ref,
             )
@@ -536,6 +575,7 @@ def persist_pipeline_result(
             session_id=session_id,
             metric_key=metric_key,
             value=value,
+            run_id=run_id,
             transcript_id=transcript_id,
         )
         metric_values_written += 1
@@ -559,7 +599,11 @@ if __name__ == "__main__":
         repo.create_session(session_id, source="personal_pipeline")
         repo.create_audio_asset("audio-test-1", session_id, "file:///tmp/fake.wav", "wav", 12.3)
         repo.create_transcript("transcript-test-1", session_id, "whisperx", "file:///tmp/fake.json",
-                                audio_id="audio-test-1", target_speaker_label="SPEAKER_00")
+                                audio_id="audio-test-1", target_speaker_label="SPEAKER_00",
+                                asr_model="large-v3", diarization_model="pyannote/speaker-diarization-community-1",
+                                asr_settings={"compute_type": "float16", "batch_size": 1, "language": "de"})
+        repo.create_analysis_run("run-test-1", session_id, "transcript-test-1", llm_model="fake-model",
+                                  prompt_versions={"GDD-1": "aaaa"}, settings={"chunk_seconds": 900})
 
         fake_result = {
             "wpm": 142.5,
@@ -589,7 +633,7 @@ if __name__ == "__main__":
         }
 
         summary = persist_pipeline_result(repo, session_id, "transcript-test-1", fake_result,
-                                           id_factory=lambda: str(uuid.uuid4()))
+                                           id_factory=lambda: str(uuid.uuid4()), run_id="run-test-1")
         print(f"persist_pipeline_result() -> {summary}")
 
         items = repo.list_information_items(session_id)
@@ -618,7 +662,23 @@ if __name__ == "__main__":
             "'s2' (error=False) and 's3' (skipped) must not"
         )
 
-        repo.create_report2_export("export-test-1", session_id, "file:///tmp/fake.xlsx", row_count=len(items))
+        repo.create_report2_export("export-test-1", session_id, "file:///tmp/fake.xlsx",
+                                   run_id="run-test-1", row_count=len(items))
+        repo.create_report_snapshot("report-test-1", session_id, "{}", run_id="run-test-1",
+                                    transcript_id="transcript-test-1")
+
+        # Re-analysis (schema v1.3): a second run on the SAME transcript must
+        # add its own rows, not overwrite or collide with the first run's.
+        repo.create_analysis_run("run-test-2", session_id, "transcript-test-1", llm_model="fake-model-v2",
+                                  prompt_versions={"GDD-1": "bbbb"}, settings={"chunk_seconds": 900})
+        persist_pipeline_result(repo, session_id, "transcript-test-1", fake_result,
+                                id_factory=lambda: str(uuid.uuid4()), run_id="run-test-2")
+        repo.create_report_snapshot("report-test-2", session_id, "{}", run_id="run-test-2",
+                                    transcript_id="transcript-test-1")
+        assert len(repo.list_metric_values(session_id, run_id="run-test-1")) == len(PHASE1_TAXONOMY)
+        assert len(repo.list_metric_values(session_id, run_id="run-test-2")) == len(PHASE1_TAXONOMY)
+        assert len(repo.list_metric_values(session_id)) == 2 * len(PHASE1_TAXONOMY)
+        print("\nRe-analysis confirmed: two runs on one transcript, each with its own full set of rows.")
 
         session_row = repo.get_session(session_id)
         print(f"\nsessions row: {dict(session_row)}")
@@ -626,9 +686,18 @@ if __name__ == "__main__":
         # FK integrity actually enforced -- a bogus session_id must fail,
         # not silently insert an orphaned row.
         try:
-            repo.write_metric_value("bad-1", "no-such-session", "wpm", 1.0)
+            repo.write_metric_value("bad-1", "no-such-session", "wpm", 1.0, run_id="no-such-run")
             raise AssertionError("expected a foreign key violation, insert succeeded instead")
         except sqlite3.IntegrityError as e:
+            assert "FOREIGN KEY" in str(e), f"expected a foreign key error, got: {e}"
             print(f"\nForeign key enforcement confirmed: {e}")
+
+        # Writing the same metric twice in one run must fail, never silently overwrite.
+        try:
+            repo.write_metric_value("dup-1", session_id, "wpm", 1.0, run_id="run-test-1")
+            raise AssertionError("expected a duplicate (run_id, metric_key) to fail, it succeeded instead")
+        except sqlite3.IntegrityError as e:
+            assert "UNIQUE" in str(e), f"expected a uniqueness error, got: {e}"
+            print(f"Duplicate-in-one-run rejection confirmed: {e}")
 
         print("\nAll storage.py self-checks passed.")

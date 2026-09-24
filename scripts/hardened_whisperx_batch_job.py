@@ -89,6 +89,13 @@ from pathlib import Path
 DEFAULT_AUDIO_DIR = r"C:\Users\Danie\Documents\Sound recordings\german_recordings\five_min_trunc"
 AUDIO_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac")
 
+# Loaded AND recorded in each transcript's _meta from these same constants,
+# so the provenance stored in the transcripts table can't drift from what
+# actually ran.
+ASR_MODEL = "large-v3"
+DIARIZATION_MODEL = "pyannote/speaker-diarization-community-1"
+LANGUAGE = "de"
+
 # Unchanged from the original notebook cell -- same instruction text,
 # same reasoning (verbatim/error-preserving transcription for a learner-
 # speech corpus). Kept as a module-level constant (not re-typed at the
@@ -160,13 +167,13 @@ def run_batch(
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading WhisperX model...")
-    model = whisperx.load_model("large-v3", device, compute_type=compute_type, asr_options=asr_options)
+    model = whisperx.load_model(ASR_MODEL, device, compute_type=compute_type, asr_options=asr_options)
 
     print("Loading alignment model...")
-    model_a, metadata = whisperx.load_align_model(language_code="de", device=device)
+    model_a, metadata = whisperx.load_align_model(language_code=LANGUAGE, device=device)
 
     print("Loading diarization pipeline...")
-    diarize_model = Pipeline.from_pretrained("pyannote/speaker-diarization-community-1", token=hf_token)
+    diarize_model = Pipeline.from_pretrained(DIARIZATION_MODEL, token=hf_token)
     if device == "cuda":
         diarize_model.to(torch.device("cuda"))
 
@@ -196,7 +203,7 @@ def run_batch(
         try:
             audio = whisperx.load_audio(audio_path)
 
-            result = model.transcribe(audio, language="de", batch_size=batch_size)
+            result = model.transcribe(audio, language=LANGUAGE, batch_size=batch_size)
             print(f"Detected language: {result['language']}")
 
             result = whisperx.align(
@@ -238,8 +245,11 @@ def run_batch(
 
             result["_meta"] = {
                 "engine": "whisperx",
-                "model": "large-v3",
+                "model": ASR_MODEL,
+                "diarization_model": DIARIZATION_MODEL,
+                "language": LANGUAGE,
                 "compute_type": compute_type,
+                "batch_size": batch_size,
                 "initial_prompt": INITIAL_PROMPT,
                 "num_speakers_hint": num_speakers,
                 "prompt_leak_segments_dropped": len(dropped_segments),

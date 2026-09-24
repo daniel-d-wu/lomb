@@ -75,4 +75,10 @@ CONFIG = MetricPromptConfig(
     few_shot_examples=FEW_SHOT_EXAMPLES,
     response_schema=RESPONSE_SCHEMA,
     input_kind="sentence",
+    construct="ACCURACY",
+    metric_key="lp_count",
+    unit="count",
+    formula="count of flagged sentences this session (placeholder -- not an error rate)",
+    report1_tag="Word choice / collocation",
+    report1_order=6,
 )
