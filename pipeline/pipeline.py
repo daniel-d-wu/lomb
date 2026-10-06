@@ -164,8 +164,13 @@ def _error_entries(chunk_outputs: list, sentences: list[str]) -> tuple[dict, lis
                 "error": True,
                 "confidence": e["confidence"],
                 "reasoning": e["reasoning"],
-                "corrected": e["corrected"],
+                "corrected": e["corrected"],   # built in code: said -> fix
                 "said": e["said"],
+                "fix": e["fix"],
+                "clean": e["clean"],           # fully corrected, filler-free sentence (shown on cards)
+                "understandable": e["understandable"],
+                "clean_ok": e["clean_ok"],     # clean exists and contains this fix
+                "said_not_found": e["said_not_found"],
                 "self_corrected": e["self_corrected"],
                 "possible_transcription_error": e["possible_transcription_error"],
                 "error_id": error_id,
@@ -368,6 +373,23 @@ if __name__ == "__main__":
     assert asr, "FakeProvider marks every 9th sentence's error as a possible transcription error"
     assert all(rejection_reason(en["output"], en["input"]) == "possible transcription error" for en in asr)
     print(f"  {len(asr)} possible transcription error(s) rejected")
+
+    print("\n--- Check 4: corrections are built in code; clean sentences checked against the fix ---")
+    from pipeline.flag_quality import apply_fix
+    for tag, en in placed:
+        out = en["output"]
+        assert out["corrected"] == apply_fix(en["input"], out["said"], out["fix"]), "corrected must be said -> fix"
+        assert out["clean_ok"] == (out["understandable"] and "FAKEFIX" in out["clean"]), out
+    unclear = [en for _, en in placed if not en["output"]["understandable"]]
+    assert unclear and all(not en["output"]["clean_ok"] for en in unclear)
+    p5 = FakeProvider(bad_said=True)
+    r5 = run_pipeline_from_turns(p5, turns, "A")
+    bad = [en for tag in ERROR_METRICS for en in r5["results"][tag]]
+    assert bad and all(en["output"]["said_not_found"] and en["output"]["corrected"] == "" for en in bad)
+    assert all(rejection_reason(en["output"], en["input"]) in ("flagged words not in sentence",
+                                                             "possible transcription error") for en in bad)
+    print(f"  {len(placed)} corrections rebuilt in code; {len(unclear)} not-understandable sentence(s) get no "
+          f"clean sentence; {len(bad)} errors pointing at words not in the sentence rejected")
 
     print("\n--- Check 1c: 20-second chunks give the same errors with more calls ---")
     p3 = FakeProvider()

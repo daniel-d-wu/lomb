@@ -14,6 +14,7 @@ so a "correction" that only drops a filler counts as no correction.
 import difflib
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -26,6 +27,56 @@ def content_words(text: str) -> list[str]:
     return [w for w in words if w and w not in FILLER_TOKENS]
 
 
+def apply_fix(sentence: str, said: str, fix: str) -> str | None:
+    """The sentence with the flagged words `said` replaced by `fix`, or None
+    if `said` isn't in the sentence. Built in code (2026-10-06) instead of
+    asking the model to rewrite the whole sentence: the model got the fix
+    right in its reasoning but garbled the rewrite ("mit der" -> wrote "mit
+    den"; inserted "dem" without removing "das"; appended "benutzt.").
+    First occurrence wins; the finder is told to make `said` unique."""
+    if not said.strip():
+        return None
+    i = sentence.find(said)
+    if i < 0:
+        i = sentence.lower().find(said.lower())
+        if i < 0:
+            return None
+    return re.sub(r" {2,}", " ", sentence[:i] + fix + sentence[i + len(said):]).strip()
+
+
+# German separable-verb prefixes: a fix's "hängt ... ab" can legitimately
+# reappear in the clean sentence as "abhängt" (and "zu ... auf" as "aufzu-").
+SEPARABLE_PREFIXES = (
+    "ab", "an", "auf", "aus", "bei", "ein", "fest", "fort", "her", "hin", "los", "mit", "nach", "vor",
+    "weg", "weiter", "zu", "zurück", "zusammen", "dar", "heraus", "herein", "hinaus", "vorbei",
+)
+
+
+def _word_present(w: str, words: set[str]) -> bool:
+    if w in words:
+        return True
+    for cw in words:
+        for p in SEPARABLE_PREFIXES:
+            if w == p and cw.startswith(p) and len(cw) > len(p) + 2:   # "ab" inside "abhängt"
+                return True
+            if cw in (p + w, p + "zu" + w) or (w == "zu" and cw.startswith(p + "zu")):  # "hängt"/"aufzunehmen"
+                return True
+    return False
+
+
+def clean_has_fix(clean: str, said: str, fix: str) -> bool:
+    """Does the clean (fully corrected) sentence contain the words this fix
+    adds? Guards against a clean sentence that contradicts the fix -- e.g.
+    the card says "die -> der" but the clean sentence still says "den".
+    Separable verbs are matched in either shape (2026-10-06: "hängt ... davon
+    ab" vs "davon abhängt" wrongly blocked real cards -- failure mode M25)."""
+    if not clean.strip():
+        return False
+    added = Counter(content_words(fix)) - Counter(content_words(said))
+    words = set(content_words(clean))
+    return all(_word_present(w, words) for w in added)
+
+
 def rejection_reason(output: dict | None, said: str) -> str | None:
     """None if this is a trustworthy error flag (or not an error flag at
     all); otherwise a short reason it can't be trusted. `said` is the full
@@ -34,6 +85,8 @@ def rejection_reason(output: dict | None, said: str) -> str | None:
         return None
     if output.get("possible_transcription_error"):
         return "possible transcription error"  # finder thinks Whisper misheard -- not the learner's mistake
+    if output.get("said_not_found"):
+        return "flagged words not in sentence"  # model pointed at words the learner didn't say -- never guessed
     if output.get("untagged"):
         return "sorter gave no tag"  # found, but never categorised -- counted nowhere rather than guessed
     if output.get("confidence") != "high":

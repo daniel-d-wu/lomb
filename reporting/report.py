@@ -124,7 +124,7 @@ from html import escape
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from pipeline.flag_quality import changed_word_count, fix_signature, rejection_reason  # noqa: E402
+from pipeline.flag_quality import changed_word_count, content_words, fix_signature, rejection_reason  # noqa: E402
 from pipeline.registry import ERROR_TAGS, OTHER_ERROR_KEY, REPORT1_ERROR_METRICS  # noqa: E402
 
 # Report 1's accuracy.errors[] metrics and their labels come from each
@@ -137,6 +137,19 @@ TAGS = {key: ERROR_TAGS[key].report1_tag for key in REPORT1_ERROR_METRICS}
 ERROR_METRICS = REPORT1_ERROR_METRICS
 CAP_PER_METRIC = 2
 CAP_TOTAL = CAP_PER_METRIC * len(ERROR_METRICS)  # 2 per Report 1 metric (2026-09-02 decision)
+
+
+def _card_good(entry: dict) -> str | None:
+    """The correct sentence a card shows (2026-10-06, Dan: "a fully correct,
+    clean sentence"): the finder's clean version -- every error fixed,
+    fillers and restarts removed -- but only if code confirmed it contains
+    this error's fix. None = not card-worthy (still counted, still in
+    Report 2). Results from before 2026-10-06 have no clean sentence and
+    fall back to the old single-fix `corrected`."""
+    out = entry["output"]
+    if "clean_ok" not in out:
+        return out.get("corrected")
+    return out["clean"] if out["clean_ok"] else None
 
 
 def _card_rank(entry: dict) -> tuple:
@@ -154,6 +167,7 @@ def _build_accuracy(results: dict) -> dict:
     2. Same mistake with the same word repeated -> ONE card, with
        `occurrences`; habits first, since they're the most useful to fix.
     3. Then the clearest lesson: fewest words changed, then shortest sentence.
+    3b. Only errors with a verified clean sentence (_card_good) get a card.
     4. Each sentence appears once across all metrics; other error types found
        in it are listed in `alsoTags` instead of repeating the sentence.
     Metrics are visited in report1_order, so the higher-priority metric
@@ -174,6 +188,7 @@ def _build_accuracy(results: dict) -> dict:
             tags_by_sentence[e["input"]].append(metric)
 
     cards, shown_sentences = [], set()
+    no_clean: dict[str, int] = defaultdict(int)
     for rank, metric in enumerate(ERROR_METRICS):
         if metric not in results:
             coverage.append(f"{metric}: not yet wired into this pipeline run "
@@ -181,6 +196,9 @@ def _build_accuracy(results: dict) -> dict:
             continue
         groups: dict[tuple, list[dict]] = defaultdict(list)
         for e in candidates[metric]:
+            if _card_good(e) is None:
+                no_clean[metric] += 1
+                continue
             groups[fix_signature(e["input"], e["output"].get("corrected") or e["input"])].append(e)
         ranked_groups = sorted(groups.values(), key=lambda g: (-len(g), _card_rank(min(g, key=_card_rank))))
 
@@ -193,9 +211,10 @@ def _build_accuracy(results: dict) -> dict:
             cards.append((-len(group), rank, {
                 "tag": TAGS[metric],
                 "bad": example["input"],
-                # None when this pipeline_result.json predates the
-                # `corrected` schema field -- see module docstring.
-                "good": example["output"].get("corrected"),
+                "good": _card_good(example),
+                # the one change this card is about; absent before 2026-10-06
+                "fix": ({"said": example["output"]["said"], "to": example["output"]["fix"]}
+                        if "fix" in example["output"] else None),
                 "why": example["output"]["reasoning"],
                 "occurrences": len(group),
                 "alsoTags": [TAGS[m] for m in tags_by_sentence[example["input"]] if m != metric],
@@ -208,6 +227,8 @@ def _build_accuracy(results: dict) -> dict:
         note = f"{metric}: {n_valid} flagged this session, {shown} shown"
         if rejected[metric]:
             note += f" ({rejected[metric]} more auto-rejected as untrustworthy, not counted)"
+        if no_clean[metric]:
+            note += f"; {no_clean[metric]} counted but not card-eligible (no verified clean sentence)"
         coverage.append(note + ".")
 
     # Found but never shown: errors no fluenceme covers, and flags that look
@@ -322,6 +343,23 @@ def _tokenize(sentence: str) -> list[str]:
     return sentence.split()
 
 
+def _fix_html(bad: str, good: str, fix: dict) -> tuple[str, str]:
+    """2026-10-06 cards: the clean sentence is restructured (fillers and
+    restarts gone, other errors fixed), so a word diff against what was said
+    would light up everything. Instead: red = the exact words the learner
+    said wrong; green = the words this fix introduces, wherever they appear
+    in the clean sentence (for a pure reordering, the moved words)."""
+    said, to = fix.get("said") or "", fix.get("to") or ""
+    i = bad.find(said) if said else -1
+    bad_html = (escape(bad[:i]) + f'<span class="bad-hl">{escape(said)}</span>' + escape(bad[i + len(said):])
+                if i >= 0 else escape(bad))
+    added = set(content_words(to)) - set(content_words(said)) or set(content_words(to))
+    good_html = " ".join(
+        f'<span class="good-hl">{escape(tok)}</span>' if (content_words(tok) or [""])[0] in added else escape(tok)
+        for tok in good.split())
+    return bad_html, good_html
+
+
 def _diff_html(bad: str, good: str | None) -> tuple[str, str]:
     """Word-level diff between the original (bad) sentence and the
     model's own corrected (good) sentence, returning (bad_html,
@@ -372,7 +410,8 @@ def render_html(report: dict) -> str:
 
     cards = []
     for e in accuracy["errors"]:
-        bad_html, good_html = _diff_html(e["bad"], e["good"])
+        bad_html, good_html = (_fix_html(e["bad"], e["good"], e["fix"]) if e.get("fix")
+                               else _diff_html(e["bad"], e["good"]))
         repeat = (f'<span class="tag repeat">Seen {e["occurrences"]}× this session</span>'
                   if e.get("occurrences", 1) > 1 else "")
         also = (f'<div class="also">Also in this sentence: {escape(", ".join(e["alsoTags"]))}</div>'

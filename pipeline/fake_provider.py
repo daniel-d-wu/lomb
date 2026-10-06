@@ -9,9 +9,11 @@ Shared by pipeline/pipeline.py's self-test and
 scripts/run_end_to_end_whisperx_test.py (it used to be copied into both).
 
 Fake behaviour, by prompt:
-  ERROR_FINDER  one fake error in every `error_every`-th sentence (by index);
-                every 9th sentence's error is marked a possible
-                transcription error
+  ERROR_FINDER  one fake error in every `error_every`-th sentence (by index):
+                said = its first word, fix = "FAKEFIX"; a clean sentence
+                for each, except every 6th index (not understandable);
+                every 9th index's error is marked a possible transcription
+                error; with bad_said=True `said` is never in the sentence
   ERROR_SORTER  tags cycle through every error tag in registry order; with
                 leave_untagged=True the last error of each call gets no tag
   labelers      STRUCTURE_BREADTH gets a repeating, overlapping label cycle
@@ -38,9 +40,10 @@ class FakeProvider:
     model = "FakeProvider"
     generation_config: dict = {}
 
-    def __init__(self, *, error_every: int = 3, leave_untagged: bool = False):
+    def __init__(self, *, error_every: int = 3, leave_untagged: bool = False, bad_said: bool = False):
         self.error_every = error_every
         self.leave_untagged = leave_untagged
+        self.bad_said = bad_said  # point every error at words that aren't in the sentence
         self._lock = threading.Lock()  # calls arrive in parallel
         self.call_count = 0
         self.calls_by_key: dict[str, int] = {}
@@ -51,25 +54,33 @@ class FakeProvider:
             self.calls_by_key[config.key] = self.calls_by_key.get(config.key, 0) + 1
         items = json.loads(input_data)
         if config.key == FINDER_KEY:
-            return {"errors": [self._fake_error(it) for it in items if it["index"] % self.error_every == 0]}
+            hits = [it for it in items if it["index"] % self.error_every == 0]
+            return {"errors": [self._fake_error(it) for it in hits],
+                    "clean_sentences": [self._fake_clean(it) for it in hits]}
         if config.key == SORTER_KEY:
             tags = list(ERROR_TAGS)
             answers = [{"id": it["id"], "tag": tags[it["id"] % len(tags)]} for it in items]
             return {"tags": answers[:-1] if self.leave_untagged else answers}
         return {"results": [{"index": it["index"], **self._label(config.key, it)} for it in items]}
 
-    @staticmethod
-    def _fake_error(item: dict) -> dict:
-        words = item["text"].split()
+    def _fake_error(self, item: dict) -> dict:
         return {
             "index": item["index"],
-            "said": words[0],
-            "corrected": " ".join(["FAKEFIX"] + words[1:]),
+            "said": "NOT-IN-SENTENCE" if self.bad_said else item["text"].split()[0],
             "reasoning": NOTE,
+            "fix": "FAKEFIX",
             "confidence": "high",
             "self_corrected": False,
             "possible_transcription_error": item["index"] % 9 == 0 and item["index"] > 0,
         }
+
+    @staticmethod
+    def _fake_clean(item: dict) -> dict:
+        # every 6th errored sentence is "not understandable" -> no clean sentence, no card
+        if item["index"] % 6 == 0:
+            return {"index": item["index"], "understandable": False, "clean": ""}
+        return {"index": item["index"], "understandable": True,
+                "clean": " ".join(["FAKEFIX"] + item["text"].split()[1:])}
 
     @staticmethod
     def _label(key: str, item: dict) -> dict:

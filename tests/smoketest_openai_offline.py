@@ -60,9 +60,8 @@ def sample_for(config) -> str:
 
 
 def empty_answer(config) -> dict:
-    """The smallest valid answer: no errors / no tags / no results."""
-    (list_key,) = config.response_schema["properties"]
-    return {list_key: []}
+    """The smallest valid answer: every list empty (no errors / no tags / no results)."""
+    return {key: [] for key in config.response_schema["properties"]}
 
 
 def check_schema_strict_invariants(schema, path="$"):
