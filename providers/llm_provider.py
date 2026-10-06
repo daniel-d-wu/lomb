@@ -21,13 +21,13 @@ from typing import Any
 # a sibling of this file's own directory (providers/).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline.metric_types import MetricPromptConfig
+from pipeline.metric_types import PromptConfig
 
 
 class LLMProvider(ABC):
 
     @abstractmethod
-    def build_request(self, config: MetricPromptConfig, input_data: Any) -> dict:
+    def build_request(self, config: PromptConfig, input_data: Any) -> dict:
         """Translate provider-agnostic content (instruction text, few-shot
         examples, output schema) into this provider's own native request
         format. This is the only place provider-specific field names
@@ -49,7 +49,7 @@ class LLMProvider(ABC):
         downstream code never has to know or care which provider answered."""
         raise NotImplementedError
 
-    def classify(self, config: MetricPromptConfig, input_data: Any) -> dict:
+    def classify(self, config: PromptConfig, input_data: Any) -> dict:
         """Convenience: build -> call -> parse in one step. Adapters
         generally shouldn't need to override this -- override the three
         methods above instead."""

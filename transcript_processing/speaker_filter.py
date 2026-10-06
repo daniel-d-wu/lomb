@@ -422,7 +422,8 @@ if __name__ == "__main__":
     # (transcript_processing/), not the directory Python auto-adds for us.
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from providers.gemini_provider import GeminiProvider
-    from pipeline.registry import METRIC_PROMPTS
+    from pipeline.batching import batch_input
+    from pipeline.error_finder import FINDER_CONFIG
 
     transcript = [
         Turn("SPEAKER_00", "Guten Tag, wie geht es Ihnen heute?", 0.0, 2.1, [
@@ -544,8 +545,8 @@ if __name__ == "__main__":
     # prompt's request-building -- not just that this module runs, but
     # that its output is consumable by registry.py without modification.
     gemini = GeminiProvider()
-    req = gemini.build_request(METRIC_PROMPTS["GDD-2"], sentences[-1])
-    print(f"GDD-2 request built from filtered sentence {sentences[-1]!r}: "
+    req = gemini.build_request(FINDER_CONFIG, batch_input(list(enumerate(sentences))))
+    print(f"ERROR_FINDER request built from the filtered sentences (last: {sentences[-1]!r}): "
           f"{list(req.keys())}")
 
     # Prove the unknown-speaker guard actually fires.

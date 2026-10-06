@@ -44,7 +44,12 @@ LLM metric to begin with. DIRECT_METRICS now covers all four no-API-call
 metrics together. The cost/call-count estimate right below only covers the
 7 LLM-backed metrics.
 
-What this actually costs, for sample_transcript_assemblyai_v3.json
+2026-09-24: error detection is find-then-sort -- 2 calls for every error
+fluenceme together, plus 1 for STRUCTURE_BREADTH, per 15-min chunk (3 total
+for this sample). The paragraph below describes the older per-sentence
+design and is kept for history only.
+
+What this used to cost, for sample_transcript_assemblyai_v3.json
 specifically: 16 sentences x 6 single-sentence metrics (minus whatever the
 pre-filter skips for GDD-1/GDD-2) + 14 GVT-1 sentence-windows = up to
 ~110 live API calls (down from ~153 before 2026-09-06's UNFILLED_PAUSE/
@@ -74,7 +79,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.pipeline import (
     run_pipeline,
-    SENTENCE_METRICS,
+    ERROR_METRICS,
+    LABELER_METRICS,
     DIRECT_METRICS,
 )
 from providers.openai_provider import OpenAIProvider
@@ -99,7 +105,8 @@ def main() -> int:
     provider = OpenAIProvider()
     print(f"Transcript: {transcript_path}")
     print(f"Model: {provider.model}")
-    print(f"Running {len(SENTENCE_METRICS)} LLM metrics (one live API call each) "
+    print(f"Running find-then-sort error detection ({len(ERROR_METRICS)} error tags, 2 live calls) + "
+          f"{len(LABELER_METRICS)} labeler(s) (1 live call each) "
           f"+ {len(DIRECT_METRICS)} direct/"
           f"deterministic metrics (free, no API call) against speaker "
           f"{TARGET_SPEAKER!r}'s turns...\n")
@@ -114,22 +121,23 @@ def main() -> int:
     print(f"filled_pause_count:        {result['filled_pause_count']}")
     print(f"unfilled_pause_count:      {result['unfilled_pause_count']}\n")
 
-    for metric_key in SENTENCE_METRICS:
+    print(f"--- Errors found: {result['found_error_count']} (one entry per error, under the sorter's tag) ---")
+    for metric_key in ERROR_METRICS:
+        for entry in result["results"][metric_key]:
+            out = entry["output"]
+            print(f"  {metric_key:<12} {out['said']!r} -> {out['corrected']!r}  ({out['confidence']})")
+            print(f"      in: {entry['input']!r}")
+            print(f"      reasoning: {out['reasoning']}")
+    print()
+
+    for metric_key in LABELER_METRICS:
         print(f"--- {metric_key} ---")
         for entry in result["results"][metric_key]:
-            if entry["skipped"]:
-                print(f"  SKIPPED (pre-filter)  {entry['input']!r}")
-                continue
             out = entry["output"]
             if out is None:
                 print(f"  MISSING (not in batch answer)  {entry['input']!r}")
                 continue
-            flag = out.get("error", out.get("structures"))
-            print(f"  {flag!s:<30} {entry['input']!r}")
-            if out.get("reasoning"):
-                print(f"      reasoning: {out['reasoning']}")
-            if out.get("error") and out.get("corrected"):
-                print(f"      corrected: {out['corrected']!r}")
+            print(f"  {out.get('structures')!s:<30} {entry['input']!r}")
         print()
 
     print("--- FORMULAIC (regex matches against BUNDLES -- no API call, per metric_key in DIRECT_METRICS) ---")

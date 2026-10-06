@@ -307,7 +307,7 @@ if __name__ == "__main__":
     # (should NOT be flagged) -- proves both functions fire correctly and
     # that sentence_indices/boundary_type come out right, not just that
     # the module imports cleanly.
-    from speaker_filter import Word
+    from transcript_processing.speaker_filter import Word
 
     turns = [
         Turn("A", "Ich moechte, aehm, mehr ueben. Aber ich habe keine Zeit.", 0.0, 5.0, [

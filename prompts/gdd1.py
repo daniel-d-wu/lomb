@@ -1,109 +1,54 @@
 """
-GDD-1: Case Error -- Always-Dative Prepositions.
+GDD-1: Case Error -- Always-Dative Prepositions (error tag).
 
 mit / von / bei / zu / nach / aus / gegenueber / ausser / seit / ab always
-take dative, regardless of motion or direction -- unlike GDD-2's
-Wechselpraepositionen, there is no verb-based ambiguity to resolve. The
-real reliability risk (per lomb_metric_definitions_v1.md) is identifying
-which noun phrase the preposition actually governs in disfluent, restarted
-speech -- not the case rule itself, which is a fixed lookup.
+take dative, regardless of motion or direction.
 
-All 5 few-shot examples below are real transcript errors/corrections from
-dan_error_analysis_master_v3.md (GDD error pattern 1) -- none invented,
-per this project's own standing rule that drill examples anchor to real
-transcript context.
+2026-09-24 (find-then-sort): this file no longer holds a detector prompt.
+The error finder (pipeline/error_finder.py) finds every error; the sorter
+(pipeline/error_sorter.py) gives each one a tag using the definition and
+examples below. The old narrow detector prompt was removed 2026-09-24
+(see git history).
+
+Examples are real transcript errors from dan_error_analysis_master_v3.md
+(GDD error pattern 1), none invented.
 """
 
 import sys
 from pathlib import Path as _Path
 
-# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
-# a sibling of this file's own directory (prompts/), not on the path by default.
 sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from pipeline.metric_types import MetricPromptConfig
+from pipeline.metric_types import ErrorTagConfig
 
-# Fixed, closed vocabulary -- German genuinely only has these always-dative
-# prepositions, nothing "not exhaustive" about this list (unlike LPF's
-# trigger list, which is explicitly non-exhaustive). Exposed as its own
-# constant, same pattern prompts/structure_breadth.py already uses for
-# STRUCTURE_LABELS, so prefilter.py can import this directly instead of
-# re-typing the list somewhere else and risking the two copies drifting
-# apart.
+# Fixed, closed vocabulary -- German only has these always-dative
+# prepositions. Other tag files quote it so the case/gender boundary is
+# stated against one list.
 ALWAYS_DATIVE_PREPOSITIONS = [
     "mit", "von", "bei", "zu", "nach", "aus", "gegenueber", "ausser", "seit", "ab",
 ]
 
-SYSTEM_INSTRUCTION = f"""You are checking ONE German sentence for a single, narrow grammar error type: wrong case after an always-dative preposition.
-
-Always-dative prepositions: {", ".join(ALWAYS_DATIVE_PREPOSITIONS)}. These ALWAYS take dative case -- there is no motion/location distinction to resolve here (that ambiguity only applies to a different set of prepositions, handled elsewhere).
-
-Task: given one sentence containing one of these prepositions, first identify the noun phrase the preposition actually governs (be careful in disfluent or restarted speech -- the nearest noun phrase is not always the one actually governed). Then check whether that noun phrase's article/adjective is correctly declined for dative case, given its gender and number.
-
-Dative articles: masculine -> dem (contracts to vom = von+dem, beim = bei+dem, zum = zu+dem), feminine -> der (bei der, NEVER "beim" for feminine), neuter -> dem, plural -> den (and the noun itself takes -n unless it already ends in -n or -s).
-
-Common trap: "beim" and "vom" are valid contractions ONLY for masculine or neuter nouns. A feminine noun after "bei" or "von" must be "bei der" / "von der", never "beim" / "vom".
-
-If the sentence is too fragmented to identify which noun phrase is governed, set confidence to "low" and error to false -- do not guess.
-
-Always also return `corrected`: the FULL sentence, rewritten with ONLY this error type fixed (change the minimum necessary -- the article/adjective ending, not word order or wording) if error is true, or the input sentence completely unchanged if error is false. This lets a caller diff `corrected` against the original sentence word-by-word to show exactly what changed, rather than parsing it out of the reasoning text.
-
-Respond only in the fixed JSON shape you have been given."""
-
-FEW_SHOT_EXAMPLES = [
-    {
-        "input": "Trotzdem kann ich nicht mit die Leute sprechen.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'mit' governs 'die Leute' (plural) -- dative plural requires 'den Leuten', not 'die Leute'.",
-                   "corrected": "Trotzdem kann ich nicht mit den Leuten sprechen."},
-    },
-    {
-        "input": "Mit die Grammatik habe ich noch nicht so bewusst gelernt.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'mit' governs 'die Grammatik' (feminine) -- dative feminine requires 'der Grammatik', not 'die Grammatik'.",
-                   "corrected": "Mit der Grammatik habe ich noch nicht so bewusst gelernt."},
-    },
-    {
-        "input": "Es ist nur einfach ein Ei, das man vom Supermarkt kaufen kann.",
-        "answer": {"error": False, "confidence": "high",
-                   "reasoning": "'von' + masculine 'der Supermarkt' correctly contracts to 'vom Supermarkt'.",
-                   "corrected": "Es ist nur einfach ein Ei, das man vom Supermarkt kaufen kann."},
-    },
-    {
-        "input": "Frueher war ich ein Datenwissenschaftler beim Banken.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'bei' governs 'die Bank' (feminine). 'beim' (bei+dem) is valid only for masculine/neuter, so this must be 'bei der Bank', not 'beim Banken'.",
-                   "corrected": "Frueher war ich ein Datenwissenschaftler bei der Bank."},
-    },
-    {
-        "input": "Ich suche schon seit ein paar Monaten nach einem Tandempartner.",
-        "answer": {"error": False, "confidence": "high",
-                   "reasoning": "'seit' + dative 'ein paar Monaten' is correctly declined.",
-                   "corrected": "Ich suche schon seit ein paar Monaten nach einem Tandempartner."},
-    },
-]
-
-RESPONSE_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "error": {"type": "BOOLEAN"},
-        "confidence": {"type": "STRING", "enum": ["high", "low"]},
-        "reasoning": {"type": "STRING"},
-        "corrected": {"type": "STRING"},
-    },
-    "required": ["error", "confidence", "reasoning", "corrected"],
-}
-
-CONFIG = MetricPromptConfig(
+CONFIG = ErrorTagConfig(
     key="GDD-1",
-    system_instruction=SYSTEM_INSTRUCTION,
-    few_shot_examples=FEW_SHOT_EXAMPLES,
-    response_schema=RESPONSE_SCHEMA,
-    input_kind="sentence",
-    construct="ACCURACY",
-    metric_key="gdd1_count",
-    unit="count",
-    formula="count of flagged sentences this session (placeholder -- not an error rate)",
+    definition=(
+        f"Wrong CASE after an always-dative preposition ({', '.join(ALWAYS_DATIVE_PREPOSITIONS)}; "
+        "contractions vom, beim, zum, zur). The noun phrase it governs must be dative: dem (masculine/neuter), "
+        "der (feminine), den + noun ending -n (plural)."
+    ),
+    not_this=(
+        "The form IS dative but for the wrong gender of the noun (e.g. 'von einer Gefühl' -- 'einer' is "
+        "dative feminine, 'Gefühl' is neuter) -> GDD-3. The wrong preposition itself -> LPF."
+    ),
+    examples=[
+        {"sentence": "Trotzdem kann ich nicht mit die Leute sprechen.",
+         "corrected": "Trotzdem kann ich nicht mit den Leuten sprechen."},
+        {"sentence": "Mit die Grammatik habe ich noch nicht so bewusst gelernt.",
+         "corrected": "Mit der Grammatik habe ich noch nicht so bewusst gelernt."},
+        {"sentence": "Frueher war ich ein Datenwissenschaftler beim Banken.",
+         "corrected": "Frueher war ich ein Datenwissenschaftler bei der Bank."},
+    ],
+    metric_key="gdd1_errors",
+    formula="count of errors tagged GDD-1 this session; each error counts once (placeholder -- not an error rate)",
     report1_tag="Case: always-dative preposition",
     report1_order=1,
 )

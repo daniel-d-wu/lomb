@@ -1,11 +1,13 @@
-# Makes prompts/ a package. One file per LLM-assisted metric lives here --
-# each defines a single module-level constant named CONFIG
-# (a pipeline.metric_types.MetricPromptConfig -- metric_types.py moved into
-# pipeline/ in the 2026-09 reorg, hence the pipeline.metric_types import
-# each of these files now starts with). See pipeline/registry.py for how
-# these get wired together.
+# Makes prompts/ a package. One file per fluenceme, each defining a single
+# module-level CONFIG that pipeline/registry.py discovers automatically:
 #
-# formulaic.py, filled_pause.py, and unfilled_pause.py are the exception:
-# each now holds only a reference constant (BUNDLES / FILLER_TOKENS /
-# PAUSE_THRESHOLD_SECONDS), no CONFIG -- those three metrics moved off the
-# LLM entirely and are computed directly by pipeline/direct_computation.py.
+#   ErrorTagConfig      an error fluenceme (gdd1..gdd6, gvt1, gvt2, lp, lpf):
+#                       a definition + real examples the error sorter uses to
+#                       tag errors the error finder found. No LLM call of its
+#                       own -- adding one adds a category, not a call.
+#   MetricPromptConfig  a labeler fluenceme (structure_breadth): its own
+#                       prompt, one batch call per chunk.
+#
+# formulaic.py, filled_pause.py and unfilled_pause.py hold only reference
+# constants (BUNDLES / FILLER_TOKENS / PAUSE_THRESHOLD_SECONDS), no CONFIG --
+# those fluencemes are computed directly by pipeline/direct_computation.py.

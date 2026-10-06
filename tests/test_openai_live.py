@@ -31,11 +31,12 @@ What this proves, that offline testing couldn't:
     docstring for why that couldn't just call the SDK's own
     response.output_text property), not just a hand-constructed fake one.
 
-Uses the same GDD-2 / "Das Bild haengt an die Wand." scenario
+Uses the same "Das Bild haengt an die Wand." scenario (sent to the error
+finder since 2026-09-24; it used to be the narrow GDD-2 prompt)
 test_gemini_live.py uses, specifically so the two providers' real results
 can be compared side by side on the identical input.
-Expected answer per that sentence's own grammar (dative required after a
-static-location "haengt", not accusative): error=true.
+Expected: at least one error found in it (dative required after a
+static-location "haengt", not accusative).
 """
 
 import os
@@ -47,7 +48,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from providers.openai_provider import OpenAIProvider
-from pipeline.registry import METRIC_PROMPTS
+from pipeline.batching import batch_input
+from pipeline.error_finder import FINDER_CONFIG
 
 
 def main() -> int:
@@ -64,11 +66,11 @@ def main() -> int:
     sentence = "Das Bild haengt an die Wand."
 
     print(f"Model:    {provider.model}")
-    print(f"Metric:   GDD-2")
+    print(f"Prompt:   ERROR_FINDER (find-then-sort, call 1)")
     print(f"Input:    {sentence!r}")
     print()
 
-    request = provider.build_request(METRIC_PROMPTS["GDD-2"], sentence)
+    request = provider.build_request(FINDER_CONFIG, batch_input([(0, sentence)]))
     print("Built request OK. Calling the live API...")
 
     try:
@@ -94,15 +96,14 @@ def main() -> int:
     print(result)
 
     print("\n--- Sanity check against the known-correct answer for this sentence ---")
-    expected_error = True  # dative required ('an der Wand'), sentence uses accusative -- this IS an error
-    if result.get("error") == expected_error:
-        print(f"OK  -- error={result.get('error')} matches the expected {expected_error}")
+    # dative required ('an der Wand'), sentence uses accusative -- the finder
+    # should report at least one error in sentence 0.
+    found = [e for e in result.get("errors", []) if e.get("index") == 0]
+    if found:
+        print(f"OK  -- {len(found)} error(s) found: {[(e['said'], e['corrected']) for e in found]}")
     else:
-        print(
-            f"MISMATCH -- got error={result.get('error')!r}, expected {expected_error}. "
-            "Not necessarily a bug (the model can be wrong or the prompt may "
-            "need iteration) -- but worth a closer look at the reasoning field."
-        )
+        print("MISMATCH -- no error found. Not necessarily a bug (the model can be wrong or the "
+              "prompt may need iteration) -- but worth a closer look.")
     return 0
 
 

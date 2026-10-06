@@ -46,11 +46,16 @@ direct_computation.py, speaker_filter.py for the same practice):
       Good enough to prove metric_values gets real, correctly-shaped
       rows; not a claim that these are the RIGHT numbers to report on.
     - information_items population rule: only sentences/windows/
-      occurrences that were actually FLAGGED get a row (an LLM sentence
-      metric's output.error is True; STRUCTURE_BREADTH's output.structures
-      has a non-"none" label; every direct-computation metric's entries,
-      since those are already occurrence-only by construction -- see
-      direct_computation.py's own docstring). This reading comes from
+      occurrences that were actually FLAGGED get a row (one row per ERROR
+      the finder reported, under the tag the sorter gave it -- as of the
+      2026-09-24 find-then-sort redesign, two errors in one sentence are
+      two rows; STRUCTURE_BREADTH's output.structures has a non-"none"
+      label; every direct-computation metric's entries, since those are
+      already occurrence-only by construction -- see
+      direct_computation.py's own docstring). Errors that can't be
+      trusted (low confidence, possible transcription error, no tag, no
+      real correction) are stored with review_status "auto_rejected:
+      <reason>" and never counted. This reading comes from
       lomb_metric_architecture_v1.md's own description of what this
       table is FOR ("errors flagged in this session, shown with
       transcript context") -- not from an explicit population-rule

@@ -1,118 +1,45 @@
 """
-LPF: Lexical Phrase / False Friend error rate (wrong preposition or
-collocate from L1-English transfer).
+LPF: Lexical Phrase / False Friend -- English (L1) transfer (error tag).
 
-The verb-preposition lookup itself is mechanical (a fixed dictionary), but
-locating the preposition actually governed by a target verb in a disfluent
-utterance -- rather than one attached to something else nearby -- needs
-judgment on messy input, which is why this stays LLM-assisted.
+2026-09-24: widened to Dan's own LPF definition in
+dan_error_analysis_master_v3.md -- "LPF -- Lexical Phrase / False Friend
+(L1 English transfer)", three sub-concepts: (1) wrong preposition from L1
+transfer, (2) domain-specific verb confusion, (3) idiom transfer / calques
+(false friends included). The old narrow detector only covered (1), so
+English-caused word choice like "Beginner-Glück" belonged to no fluenceme
+(docs/lomb_failure_modes_v1.md M17). Corpus: 247 LPF entries -- 97 wrong
+preposition, 98 calque, 24 domain verb, 20 false friend.
 
-5 of the 6 few-shot examples are real transcript errors/corrections from
-dan_error_analysis_master_v3.md (LPF error pattern 1); the 6th (added
-2026-09-05, see below) is from all_grammar_errors_master.json.
-
-2026-09-05, Dan's explicit instruction: `corrected` no longer follows the
-"only fix this one error type" convention every other error-metric prompt
-in this codebase uses (GDD-1, GDD-2, GVT-1, GVT-2, LP still all do -- this
-change is LPF-specific, as literally requested, not applied elsewhere).
-When a sentence has more than one error, `corrected` must now be a FULLY
-corrected, natural sentence -- every error fixed, not just the
-LPF-pattern preposition/case one that made `error` true. The `error` flag
-itself is unchanged in scope: it still only answers "does an LPF-type
-preposition-transfer error exist here," never anything about other error
-types. Only what `corrected` shows changed. The new 6th few-shot example
-below is real corpus data demonstrating this on a sentence with TWO
-co-occurring LPF-pattern errors in the same utterance (alicia_italki3,
-all_grammar_errors_master.json, itself explicitly documented there as a
-"dual error in this utterance") -- both get fixed in `corrected`, not
-just whichever one the reasoning happens to name first.
+Examples are verbatim real transcript errors from
+all_grammar_errors_master.json; none from the benny_italki5/6 test sessions.
 """
 
 import sys
 from pathlib import Path as _Path
 
-# repo root on sys.path -- metric_types.py moved into pipeline/ post-reorg,
-# a sibling of this file's own directory (prompts/), not on the path by default.
 sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from pipeline.metric_types import MetricPromptConfig
+from pipeline.metric_types import ErrorTagConfig
 
-SYSTEM_INSTRUCTION = """You are checking ONE German sentence for a single, narrow error type: a wrong preposition (or a missing/extra preposition) governed by a specific verb, caused by direct transfer from English.
-
-Common examples of this transfer pattern (not exhaustive):
-- suchen takes 'nach', not 'fuer' (English "search for")
-- sich freuen (auf something upcoming) takes 'auf', not 'fuer' (English "look forward to/be happy for")
-- passen (to suit someone) takes a plain dative object, no preposition at all (English "work for me" wrongly imports 'fuer')
-- im Fernsehen / in den Nachrichten (in TV/the news), not 'auf' (English "on TV/on the news")
-
-Task: given one sentence, identify the verb that is the source of a potential error, determine which preposition (if any) it actually governs in standard German, and check whether the sentence uses the correct one. Be careful to attach the preposition to the verb it's actually modifying, not one that happens to sit nearby in disfluent speech.
-
-If you cannot confidently identify which verb governs the preposition in question, set confidence to "low" and error to false.
-
-Always also return `corrected`. Unlike this codebase's other error-checking metrics (which only fix their own one target error type and leave everything else in the sentence untouched), LPF's `corrected` must be a FULLY corrected, natural-sounding version of the whole sentence: if the sentence has more than one error -- another LPF-pattern preposition error elsewhere in it, or a different kind of error entirely (case, word order, word choice) -- fix ALL of them, not only the one that made `error` true. `error` itself stays scoped to just the LPF preposition-transfer pattern described above; only what `corrected` shows is broader. If error is false, return the input sentence completely unchanged (do not "fix" unrelated errors in a sentence that has no LPF-pattern error at all). This lets a caller diff `corrected` against the original sentence word-by-word to show exactly what changed, rather than parsing it out of the reasoning text.
-
-Respond only in the fixed JSON shape you have been given."""
-
-FEW_SHOT_EXAMPLES = [
-    {
-        "input": "Ich suche fuer Muttersprachler, um mein Deutsch zu verbessern.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'suchen' governs 'nach', not 'fuer' -- should be 'suche nach Muttersprachlern'.",
-                   "corrected": "Ich suche nach Muttersprachlern, um mein Deutsch zu verbessern."},
-    },
-    {
-        "input": "Ich freue mich fuer diese Reise, dass ich bald gehe.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'sich freuen' (auf something upcoming) governs 'auf', not 'fuer' -- should be 'freue mich auf diese Reise'.",
-                   "corrected": "Ich freue mich auf diese Reise, dass ich bald gehe."},
-    },
-    {
-        "input": "Okay, ja, das passt fuer mich.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "'passen' takes a plain dative object with no preposition -- should be 'das passt mir', not 'das passt fuer mich'.",
-                   "corrected": "Okay, ja, das passt mir."},
-    },
-    {
-        "input": "habe ich gesehen auf der Nachricht.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "The correct collocation is 'in den Nachrichten', not 'auf der Nachricht' -- direct transfer from English 'on the news'.",
-                   "corrected": "habe ich gesehen in den Nachrichten."},
-    },
-    {
-        "input": "Ich freue mich wirklich auf Berlin -- ich war noch nie da.",
-        "answer": {"error": False, "confidence": "high",
-                   "reasoning": "'sich freuen auf' is the correct preposition here.",
-                   "corrected": "Ich freue mich wirklich auf Berlin -- ich war noch nie da."},
-    },
-    {
-        "input": "Ueber die Nachricht oder auf dem Fernseher sehe ich viele diese Rassismus oder Hate Crimes.",
-        "answer": {"error": True, "confidence": "high",
-                   "reasoning": "TWO LPF-pattern errors in this sentence, both fixed in `corrected` per the 2026-09-05 instruction, not just one of them: (1) 'ueber die Nachricht' should be 'in den Nachrichten' -- 'the news' (the broadcast) is idiomatically plural with 'in', not singular with 'ueber'; (2) 'auf dem Fernseher' should be 'im Fernsehen' -- 'im Fernsehen' (on television, the medium) is the correct collocation, 'auf dem Fernseher' literally means on top of the physical TV set. This is a real corpus utterance (alicia_italki3, all_grammar_errors_master.json) explicitly documented there as carrying both errors together.",
-                   "corrected": "In den Nachrichten oder im Fernsehen sehe ich viele diese Rassismus oder Hate Crimes."},
-    },
-]
-
-RESPONSE_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "error": {"type": "BOOLEAN"},
-        "confidence": {"type": "STRING", "enum": ["high", "low"]},
-        "reasoning": {"type": "STRING"},
-        "corrected": {"type": "STRING"},
-    },
-    "required": ["error", "confidence", "reasoning", "corrected"],
-}
-
-CONFIG = MetricPromptConfig(
+CONFIG = ErrorTagConfig(
     key="LPF",
-    system_instruction=SYSTEM_INSTRUCTION,
-    few_shot_examples=FEW_SHOT_EXAMPLES,
-    response_schema=RESPONSE_SCHEMA,
-    input_kind="sentence",
-    construct="ACCURACY",
-    metric_key="lpf_count",
-    unit="count",
-    formula="count of flagged sentences this session (placeholder -- not an error rate)",
-    report1_tag="Preposition (L1 transfer)",
+    definition=(
+        "A word or phrase copied from ENGLISH: (1) a wrong, missing or extra preposition that follows English "
+        "('suche für' -> 'suche', 'freue mich für' -> 'auf', 'passt für mich' -> 'passt mir'); (2) a verb "
+        "confused the way English words overlap (wissen vs kennen, kochen vs backen); (3) a literal "
+        "translation of an English idiom or compound, or a false friend (Kocher for Koch, Subjekt for Fach)."
+    ),
+    not_this="Unnatural word choice with no English source -> LP.",
+    examples=[
+        {"sentence": "Ich suche für Muttersprachler oder Muttersprachlerin",
+         "corrected": "Ich suche Muttersprachler oder Muttersprachlerin"},
+        {"sentence": "weil ich weiß deutsche Politik nicht so gut",
+         "corrected": "weil ich kenne deutsche Politik nicht so gut"},
+        {"sentence": "Ja, ich— ich mache einfach Dusche und, ja, ich riech gut.",
+         "corrected": "Ja, ich— ich dusche einfach und, ja, ich riech gut."},
+    ],
+    metric_key="lpf_errors",
+    formula="count of errors tagged LPF this session; each error counts once (placeholder -- not an error rate)",
+    report1_tag="English transfer (preposition, phrase, false friend)",
     report1_order=5,
 )

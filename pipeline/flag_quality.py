@@ -28,9 +28,14 @@ def content_words(text: str) -> list[str]:
 
 def rejection_reason(output: dict | None, said: str) -> str | None:
     """None if this is a trustworthy error flag (or not an error flag at
-    all); otherwise a short reason it can't be trusted."""
+    all); otherwise a short reason it can't be trusted. `said` is the full
+    sentence the flag is about."""
     if not output or output.get("error") is not True:
         return None
+    if output.get("possible_transcription_error"):
+        return "possible transcription error"  # finder thinks Whisper misheard -- not the learner's mistake
+    if output.get("untagged"):
+        return "sorter gave no tag"  # found, but never categorised -- counted nowhere rather than guessed
     if output.get("confidence") != "high":
         return "low confidence"
     if "corrected" not in output:

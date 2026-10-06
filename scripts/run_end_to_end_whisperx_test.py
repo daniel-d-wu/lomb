@@ -35,13 +35,10 @@ glossed over):
     speaker_resolution_candidates tables are not written yet (still out
     of storage.py's scope); the candidates are printed instead.
 
-  - LLM provider: defaults to a FakeProvider (see pipeline.pipeline's own
-    __main__ block for the original of this pattern) -- this sandbox has
-    no route to api.openai.com (confirmed repeatedly elsewhere in this
-    project), and Dan's own stated tolerance for this test is "accuracy
-    doesn't matter too much yet." Pass --use-openai (with OPENAI_API_KEY
-    set) to run the real LLM-assisted fluencemes for real, e.g. from Dan's
-    own machine.
+  - LLM provider: defaults to a FakeProvider (pipeline/fake_provider.py --
+    no network, no judgment, deterministic fake errors so the wiring and
+    every table can be checked for free). Pass --use-openai (with
+    OPENAI_API_KEY set) for the real error finder + sorter and labelers.
 
   - Audio: passed explicitly via --audio (required -- voiceprint matching
     needs it). audio_assets gets the real local path, size_bytes, format
@@ -58,7 +55,8 @@ glossed over):
 Usage:
   python run_end_to_end_whisperx_test.py --transcript PATH --audio PATH
       [--user-id ID] [--voiceprint-db PATH] [--speaker ID]
-      [--db PATH] [--use-openai] [--known-prompt-leak TEXT]
+      [--db PATH] [--use-openai [--llm-model M] [--reasoning-effort E]]
+      [--known-prompt-leak TEXT]
 """
 
 import argparse
@@ -71,6 +69,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from pipeline.fake_provider import FakeProvider
 from pipeline.pipeline import run_pipeline_from_turns
 from reporting.report import build_report
 from storage.storage import SQLiteStorageRepository, persist_pipeline_result
@@ -97,25 +96,23 @@ ESSENTIAL_TABLES = [
 ]
 
 
-class FakeProvider:
-    """Same pattern as pipeline.pipeline's own __main__ FakeProvider --
-    duplicated here rather than imported because the original is defined
-    inside that module's `if __name__ == "__main__":` block (not
-    importable). Makes no linguistic judgment; only proves the wiring
-    reaches classify() correctly. See pipeline.pipeline's own FakeProvider
-    docstring for the fuller reasoning -- unchanged here."""
+def print_error_summary(result: dict) -> None:
+    """What the finder found and where the sorter put it -- the numbers to
+    sanity-check before trusting any metric."""
+    from pipeline.flag_quality import rejection_reason
+    from pipeline.registry import ERROR_TAGS
 
-    def __init__(self):
-        self.call_count = 0
-
-    def classify(self, config, input_data):
-        self.call_count += 1
-        note = "FakeProvider -- orchestration test only, not a real judgment."
-        if config.key == "STRUCTURE_BREADTH":
-            answer = {"structures": ["none"], "confidence": "high", "reasoning": note}
-        else:
-            answer = {"error": False, "confidence": "high", "reasoning": note}
-        return {"results": [{"index": it["index"], **answer} for it in json.loads(input_data)]}
+    print(f"Errors found: {result['found_error_count']} (one entry per error)")
+    for key in ERROR_TAGS:
+        flagged = [e for e in result["results"].get(key, []) if e["output"] and e["output"].get("error") is True]
+        if not flagged:
+            continue
+        reasons = [rejection_reason(e["output"], e["input"]) for e in flagged]
+        rejected = [r for r in reasons if r]
+        line = f"  {key:<12} {len(flagged) - len(rejected)} counted"
+        if rejected:
+            line += f", {len(rejected)} auto-rejected ({', '.join(sorted(set(rejected)))})"
+        print(line)
 
 
 def resolve_target_speaker(turns, audio_path: Path, user_id: str, voiceprint_db: Path):
@@ -218,6 +215,10 @@ def main() -> int:
     parser.add_argument("--db", default=str(DEFAULT_DB), help="SQLite file to write into.")
     parser.add_argument("--use-openai", action="store_true",
                          help="Use the real OpenAIProvider (requires OPENAI_API_KEY) instead of FakeProvider.")
+    parser.add_argument("--llm-model", default="gpt-5.6-luna",
+                         help="OpenAI model id (with --use-openai). Default: gpt-5.6-luna")
+    parser.add_argument("--reasoning-effort", default=None,
+                         help="none | low | medium | high ... (with --use-openai). Default: the provider's 'none'.")
     parser.add_argument("--known-prompt-leak", default=None,
                          help="The exact initial_prompt text used for this job, for reliable prompt-leak filtering.")
     args = parser.parse_args()
@@ -263,7 +264,7 @@ def main() -> int:
 
     if args.use_openai:
         from providers.openai_provider import OpenAIProvider
-        provider = OpenAIProvider()
+        provider = OpenAIProvider(model=args.llm_model, reasoning_effort=args.reasoning_effort)
         print(f"Provider: OpenAIProvider (model={provider.model})")
     else:
         provider = FakeProvider()
@@ -274,7 +275,8 @@ def main() -> int:
           f"word_count={result['word_count']}  duration_seconds={result['duration_seconds']:.1f}  "
           f"wpm={result['wpm']}  chunks={result['chunk_count']}  llm_calls={result['llm_call_count']}")
     if result["llm_missing"]:
-        print(f"WARNING: model omitted sentences from its batch answer: {result['llm_missing']}")
+        print(f"WARNING: model left items out of its answer: {result['llm_missing']}")
+    print_error_summary(result)
 
     db_path = Path(args.db)
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -309,13 +311,14 @@ def main() -> int:
     run_id = f"run-{uuid.uuid4()}"
     llm_model = provider.model if args.use_openai else "FakeProvider"
     run_settings = {
+        "error_method": result["error_method"],
+        "count_unit": result["count_unit"],
         "chunk_seconds": result["chunk_seconds"],
         "repetition_run_threshold": REPETITION_RUN_THRESHOLD,
         "known_prompt_leak_given": args.known_prompt_leak is not None,
     }
     if args.use_openai:
-        from providers.openai_provider import DEFAULT_GENERATION_CONFIG
-        run_settings["llm_generation_config"] = DEFAULT_GENERATION_CONFIG
+        run_settings["llm_generation_config"] = provider.generation_config
     repo.create_analysis_run(run_id, session_id, transcript_id, llm_model=llm_model,
                              prompt_versions=result["fluenceme_versions"], settings=run_settings)
     print(f"analysis_runs: {run_id}  llm_model={llm_model}  "

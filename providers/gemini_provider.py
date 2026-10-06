@@ -63,7 +63,7 @@ from pathlib import Path as _Path
 sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
 from providers.llm_provider import LLMProvider
-from pipeline.metric_types import MetricPromptConfig
+from pipeline.metric_types import PromptConfig
 
 DEFAULT_GENERATION_CONFIG = {
     "temperature": 0,
@@ -104,7 +104,7 @@ class GeminiProvider(LLMProvider):
         self.model_version = model_version
         self.api_key_env = api_key_env
 
-    def build_request(self, config: MetricPromptConfig, input_data: Any) -> dict:
+    def build_request(self, config: PromptConfig, input_data: Any) -> dict:
         input_text = input_data if isinstance(input_data, str) else json.dumps(input_data, ensure_ascii=False)
 
         few_shot_turns = []

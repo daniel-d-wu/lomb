@@ -125,14 +125,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pipeline.flag_quality import changed_word_count, fix_signature, rejection_reason  # noqa: E402
-from pipeline.registry import METRIC_PROMPTS, REPORT1_ERROR_METRICS  # noqa: E402
+from pipeline.registry import ERROR_TAGS, OTHER_ERROR_KEY, REPORT1_ERROR_METRICS  # noqa: E402
 
 # Report 1's accuracy.errors[] metrics and their labels come from each
-# prompt file's report1_tag/report1_order (2026-09-24) -- a new fluenceme
-# with a report1_tag shows up here automatically. A designated metric
+# error tag file's report1_tag/report1_order (2026-09-24) -- a new error
+# fluenceme with a report1_tag shows up here automatically. OTHER_ERROR has
+# no report1_tag: stored and counted, never a card. A designated metric
 # absent from a given pipeline_result.json is reported as "not wired",
 # distinct from "ran, found nothing."
-TAGS = {key: METRIC_PROMPTS[key].report1_tag for key in REPORT1_ERROR_METRICS}
+TAGS = {key: ERROR_TAGS[key].report1_tag for key in REPORT1_ERROR_METRICS}
 ERROR_METRICS = REPORT1_ERROR_METRICS
 CAP_PER_METRIC = 2
 CAP_TOTAL = CAP_PER_METRIC * len(ERROR_METRICS)  # 2 per Report 1 metric (2026-09-02 decision)
@@ -208,6 +209,19 @@ def _build_accuracy(results: dict) -> dict:
         if rejected[metric]:
             note += f" ({rejected[metric]} more auto-rejected as untrustworthy, not counted)"
         coverage.append(note + ".")
+
+    # Found but never shown: errors no fluenceme covers, and flags that look
+    # like the speech recognizer misheard. Both stay in Report 2.
+    if OTHER_ERROR_KEY in results:
+        other = [e for e in results[OTHER_ERROR_KEY] if e["output"] and e["output"].get("error") is True]
+        n_other = sum(1 for e in other if rejection_reason(e["output"], e["input"]) is None)
+        coverage.append(f"{OTHER_ERROR_KEY}: {n_other} real error(s) that fit no error category -- "
+                        f"counted, not shown as cards (see Report 2).")
+    n_asr = sum(1 for entries in results.values() for e in entries
+                if e.get("output") and e["output"].get("possible_transcription_error"))
+    if n_asr:
+        coverage.append(f"{n_asr} flag(s) looked like speech-recognition mishearings, not learner errors -- "
+                        f"not counted, not shown.")
 
     cards.sort(key=lambda c: (c[0], c[1]))
     return {"errors": [card for _, _, card in cards], "_coverage_notes": coverage}

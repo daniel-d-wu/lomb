@@ -59,6 +59,10 @@ Only return a label if you are confident the structure is genuinely present -- d
 
 Respond only in the fixed JSON shape you have been given."""
 
+# The ob/relative/damit examples are illustrative, not from the transcript
+# corpus. (Until 2026-09-24 they said so inside the answer the model sees,
+# as a "reasoning" field the output schema doesn't allow, with confidence
+# "low" -- teaching the model to be unsure of textbook cases.)
 FEW_SHOT_EXAMPLES = [
     {
         "input": "Das waere schoen.",
@@ -70,18 +74,15 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "input": "Ich weiss nicht, ob ich das schaffe.",
-        "answer": {"structures": ["ob_clause"], "confidence": "low",
-                   "reasoning": "Illustrative example (not from the transcript corpus)."},
+        "answer": {"structures": ["ob_clause"], "confidence": "high"},  # illustrative, not from the transcript corpus
     },
     {
         "input": "Das ist der Mann, der mir geholfen hat.",
-        "answer": {"structures": ["relative_clause"], "confidence": "low",
-                   "reasoning": "Illustrative example (not from the transcript corpus)."},
+        "answer": {"structures": ["relative_clause"], "confidence": "high"},  # illustrative, not from the transcript corpus
     },
     {
         "input": "Ich lerne jeden Tag, damit ich schneller Fortschritte mache.",
-        "answer": {"structures": ["damit_clause"], "confidence": "low",
-                   "reasoning": "Illustrative example (not from the transcript corpus)."},
+        "answer": {"structures": ["damit_clause"], "confidence": "high"},  # illustrative, not from the transcript corpus
     },
     {
         "input": "Ich habe gestern mit Leonie gesprochen.",

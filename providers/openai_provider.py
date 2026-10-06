@@ -144,7 +144,7 @@ from pathlib import Path as _Path
 sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
 from providers.llm_provider import LLMProvider
-from pipeline.metric_types import MetricPromptConfig
+from pipeline.metric_types import PromptConfig
 
 DEFAULT_GENERATION_CONFIG = {
     "temperature": 0,
@@ -175,7 +175,7 @@ def _to_openai_schema(schema: dict) -> dict:
     docstring for what this has to get right and why.
 
     Never mutates its input: every dict encountered is shallow-copied
-    before being changed, so the shared MetricPromptConfig.response_schema
+    before being changed, so the shared PromptConfig.response_schema
     objects in registry.py -- which GeminiProvider also reads, unmodified
     -- are never touched by this.
     """
@@ -238,11 +238,22 @@ class OpenAIProvider(LLMProvider):
         # once a real key is available.
         model: str = "gpt-5.6-luna",
         api_key_env: str = "OPENAI_API_KEY",
+        reasoning_effort: str | None = None,  # None keeps DEFAULT_GENERATION_CONFIG's ("none")
     ):
         self.model = model
         self.api_key_env = api_key_env
+        # Per-instance copy, so model comparisons can vary reasoning effort
+        # and each run records exactly what it used (analysis_runs.settings_json).
+        self.generation_config = dict(DEFAULT_GENERATION_CONFIG)
+        if reasoning_effort is not None:
+            self.generation_config["reasoning"] = {"effort": reasoning_effort}
+        if self.generation_config.get("reasoning", {}).get("effort") != "none":
+            # Confirmed live 2026-09-24: with reasoning on, the API rejects
+            # temperature/top_p ("Unsupported parameter: 'temperature'").
+            self.generation_config.pop("temperature", None)
+            self.generation_config.pop("top_p", None)
 
-    def build_request(self, config: MetricPromptConfig, input_data: Any) -> dict:
+    def build_request(self, config: PromptConfig, input_data: Any) -> dict:
         input_text = input_data if isinstance(input_data, str) else json.dumps(input_data, ensure_ascii=False)
 
         # Few-shot turns only -- the system-level instruction goes through
@@ -256,7 +267,7 @@ class OpenAIProvider(LLMProvider):
             turns.append({"role": "assistant", "content": json.dumps(ex["answer"], ensure_ascii=False)})
         turns.append({"role": "user", "content": input_text})
 
-        generation_config = {**DEFAULT_GENERATION_CONFIG, **config.generation_config_overrides}
+        generation_config = {**self.generation_config, **config.generation_config_overrides}
 
         return {
             "model": self.model,
