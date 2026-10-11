@@ -50,6 +50,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.batching import build_batch_config, classify_batch
+from pipeline.clean_check import RECHECK_CONFIG, RECHECK_KEY, recheck_clean
 from pipeline.error_finder import FINDER_CONFIG, FINDER_KEY, find_errors
 from pipeline.error_sorter import SORTER_CONFIG, SORTER_KEY, sort_errors
 from pipeline.registry import DIRECT_FLUENCEMES, ERROR_TAGS, LLM_LABELERS, OTHER_ERROR_KEY
@@ -96,7 +97,8 @@ def fluenceme_versions() -> dict[str, str]:
     tag does); each error tag also gets its own fingerprint (definition +
     examples) so you can see WHICH tag changed. Labelers: the batch prompt.
     Direct: compute() source + reference data."""
-    versions = {FINDER_KEY: _prompt_fingerprint(FINDER_CONFIG), SORTER_KEY: _prompt_fingerprint(SORTER_CONFIG)}
+    versions = {FINDER_KEY: _prompt_fingerprint(FINDER_CONFIG), SORTER_KEY: _prompt_fingerprint(SORTER_CONFIG),
+                RECHECK_KEY: _prompt_fingerprint(RECHECK_CONFIG)}
     for key, tag in ERROR_TAGS.items():
         versions[key] = _fingerprint([tag.definition, tag.not_this, tag.examples])
     for key, cfg in LABELER_BATCH_PROMPTS.items():
@@ -141,10 +143,22 @@ def find_and_sort(provider, indexed_sentences: list[tuple[int, str]]) -> tuple[l
     errors = find_errors(provider, indexed_sentences)
     if not errors:
         return errors, {}, 1
+    calls = 1
+    # Re-check (2026-10-10): the clean sentences go back through the finder;
+    # a correct sentence comes back with no error. One call per chunk.
+    to_recheck = [e["clean"] for e in errors if e["checks"]]
+    if to_recheck:
+        problems = recheck_clean(provider, to_recheck)
+        calls += 1
+        for e in errors:
+            if e["checks"]:
+                found = problems.get(e["clean"].strip(), [])
+                e["checks"]["recheck_clean"] = {"passed": not found, "detail": " | ".join(found) or None}
+                e["clean_ok"] = all(c["passed"] for c in e["checks"].values())
     text = dict(indexed_sentences)
     items = [{"id": n, "sentence": text[e["index"]], "said": e["said"], "corrected": e["corrected"]}
              for n, e in enumerate(errors)]
-    return errors, sort_errors(provider, items), 2
+    return errors, sort_errors(provider, items), calls + 1
 
 
 def _error_entries(chunk_outputs: list, sentences: list[str]) -> tuple[dict, list[dict], list[int]]:
@@ -167,9 +181,11 @@ def _error_entries(chunk_outputs: list, sentences: list[str]) -> tuple[dict, lis
                 "corrected": e["corrected"],   # built in code: said -> fix
                 "said": e["said"],
                 "fix": e["fix"],
+                "gravity": e["gravity"],       # 1-5 error gravity: how serious it sounds to a native
                 "clean": e["clean"],           # fully corrected, filler-free sentence (shown on cards)
                 "understandable": e["understandable"],
-                "clean_ok": e["clean_ok"],     # clean exists and contains this fix
+                "clean_ok": e["clean_ok"],     # clean exists and passed every correction check
+                "checks": e["checks"],         # {check_type: {passed, detail}} -> correction_checks table
                 "said_not_found": e["said_not_found"],
                 "self_corrected": e["self_corrected"],
                 "possible_transcription_error": e["possible_transcription_error"],
@@ -337,12 +353,13 @@ if __name__ == "__main__":
 
     print("\n--- Check 1b: call budget -- finder once per chunk, sorter only when errors, labelers once per chunk ---")
     assert provider.calls_by_key.get(FINDER_KEY) == n_chunks
+    assert provider.calls_by_key.get(RECHECK_KEY) == (n_chunks if result["found_error_count"] else 0)
     assert provider.calls_by_key.get(SORTER_KEY) == (n_chunks if result["found_error_count"] else 0)
     for key in LABELER_METRICS:
         assert provider.calls_by_key.get(key) == n_chunks, f"{key}: one call per chunk"
     for key in ERROR_METRICS:
         assert key not in provider.calls_by_key, f"{key} must not have its own LLM call any more"
-    assert provider.call_count == result["llm_call_count"] <= (2 + len(LABELER_METRICS)) * n_chunks
+    assert provider.call_count == result["llm_call_count"] <= (3 + len(LABELER_METRICS)) * n_chunks
     print(f"  total calls={provider.call_count} (the old narrow design needed {len(ERROR_METRICS) - 1 + len(LABELER_METRICS)} per chunk)")
 
     print("\n--- Check 2: every found error lands exactly once, under its tag, on the right sentence ---")
@@ -379,7 +396,12 @@ if __name__ == "__main__":
     for tag, en in placed:
         out = en["output"]
         assert out["corrected"] == apply_fix(en["input"], out["said"], out["fix"]), "corrected must be said -> fix"
-        assert out["clean_ok"] == (out["understandable"] and "FAKEFIX" in out["clean"]), out
+        assert out["gravity"] in (1, 2, 3, 4, 5), "every error carries its 1-5 gravity"
+        assert out["clean_ok"] == (bool(out["checks"]) and all(c["passed"] for c in out["checks"].values())), out
+        if out["understandable"]:
+            assert set(out["checks"]) == {"clean_contains_fix", "no_added_words", "recheck_clean"}, out["checks"]
+    rechecked_out = [en for _, en in placed if not en["output"]["checks"].get("recheck_clean", {"passed": True})["passed"]]
+    assert rechecked_out, "FakeProvider fails the first clean sentence of each re-check"
     unclear = [en for _, en in placed if not en["output"]["understandable"]]
     assert unclear and all(not en["output"]["clean_ok"] for en in unclear)
     p5 = FakeProvider(bad_said=True)

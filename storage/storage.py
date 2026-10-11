@@ -159,9 +159,27 @@ CREATE TABLE IF NOT EXISTS information_items (
     input_ref      TEXT NOT NULL,
     output_json    TEXT NOT NULL,
     review_status  TEXT,
+    gravity        INTEGER,            -- v1.4: 1-5 error gravity (how serious it sounds to a native); NULL for non-errors
     created_at     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_information_items_session_feature ON information_items(session_id, feature_key);
+
+-- v1.4: one row per quality check run on an error's correction (does the
+-- clean sentence contain the fix? did it add words the learner never said?
+-- does the corrected sentence pass a re-check?). New check types are new
+-- rows, never new columns. A card is only shown when every check passed.
+CREATE TABLE IF NOT EXISTS correction_checks (
+    check_id    TEXT PRIMARY KEY,
+    item_id     TEXT NOT NULL REFERENCES information_items(item_id),
+    session_id  TEXT NOT NULL REFERENCES sessions(session_id),
+    run_id      TEXT NOT NULL REFERENCES analysis_runs(run_id),
+    check_type  TEXT NOT NULL,      -- 'clean_contains_fix' / 'no_added_words' / 'recheck_clean'
+    passed      BOOLEAN NOT NULL,
+    detail      TEXT,               -- why it failed (added words, the re-check's objection), or NULL
+    checked_at  TEXT NOT NULL,
+    UNIQUE(item_id, check_type)
+);
+CREATE INDEX IF NOT EXISTS idx_correction_checks_item ON correction_checks(item_id);
 
 CREATE TABLE IF NOT EXISTS metric_values (
     value_id      TEXT PRIMARY KEY,
@@ -196,7 +214,7 @@ CREATE TABLE IF NOT EXISTS report_snapshots (
     UNIQUE(run_id)
 );
 """
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
 
 # Taxonomy rows (feature_key, construct_key, computation_path, metric_key,
 # unit, formula), one per fluenceme. Derived from pipeline/registry.py as
@@ -257,7 +275,15 @@ class StorageRepository(ABC):
     @abstractmethod
     def write_information_item(self, item_id: str, session_id: str, feature_key: str, input_ref: str,
                                 output: dict, *, run_id: str, transcript_id: str | None = None,
-                                utterance_ref: str | None = None, review_status: str = "unreviewed") -> None: ...
+                                utterance_ref: str | None = None, review_status: str = "unreviewed",
+                                gravity: int | None = None) -> None: ...
+
+    @abstractmethod
+    def write_correction_check(self, check_id: str, item_id: str, session_id: str, check_type: str,
+                                passed: bool, *, run_id: str, detail: str | None = None) -> None: ...
+
+    @abstractmethod
+    def list_correction_checks(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
 
     @abstractmethod
     def write_metric_value(self, value_id: str, session_id: str, metric_key: str, value: float,
@@ -298,6 +324,9 @@ class SQLiteStorageRepository(StorageRepository):
                     f"{self.db_path} was created with a schema older than v{SCHEMA_VERSION} "
                     "(no analysis_runs/run_id). Use a new --db path."
                 )
+            if cols and "gravity" not in cols:
+                # v1.3 -> v1.4 is additive: a nullable column and a new table.
+                conn.execute("ALTER TABLE information_items ADD COLUMN gravity INTEGER")
             conn.executescript(DDL)
 
     def _connect(self) -> sqlite3.Connection:
@@ -419,19 +448,44 @@ class SQLiteStorageRepository(StorageRepository):
     # --- information_items --------------------------------------------------
 
     def write_information_item(self, item_id, session_id, feature_key, input_ref, output, *,
-                                run_id, transcript_id=None, utterance_ref=None, review_status="unreviewed") -> None:
+                                run_id, transcript_id=None, utterance_ref=None, review_status="unreviewed",
+                                gravity=None) -> None:
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO information_items
                     (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
-                     input_ref, output_json, review_status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     input_ref, output_json, review_status, gravity, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(item_id) DO NOTHING
                 """,
                 (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
-                 input_ref, json.dumps(output, ensure_ascii=False), review_status, _now()),
+                 input_ref, json.dumps(output, ensure_ascii=False), review_status, gravity, _now()),
             )
+
+    # --- correction_checks ----------------------------------------------------
+
+    def write_correction_check(self, check_id, item_id, session_id, check_type, passed, *,
+                                run_id, detail=None) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO correction_checks
+                    (check_id, item_id, session_id, run_id, check_type, passed, detail, checked_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (check_id, item_id, session_id, run_id, check_type, bool(passed), detail, _now()),
+            )
+
+    def list_correction_checks(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        query = "SELECT * FROM correction_checks WHERE session_id = ?"
+        params: tuple = (session_id,)
+        if run_id is not None:
+            query += " AND run_id = ?"
+            params += (run_id,)
+        with self._connect() as conn:
+            rows = conn.execute(query + " ORDER BY item_id, check_type", params).fetchall()
+        return [dict(r) for r in rows]
 
     def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]:
         query = "SELECT * FROM information_items WHERE session_id = ?"
@@ -538,12 +592,13 @@ def persist_pipeline_result(
     caller with its own id scheme (or a deterministic one for tests) can
     swap it in.
 
-    Returns {"information_items_written": int, "metric_values_written": int}
+    Returns {"information_items_written", "metric_values_written",
+    "correction_checks_written"} counts
     for the caller to print/verify, not swallowed silently.
     """
     repo.ensure_taxonomy_seeded()
 
-    items_written = 0
+    items_written = checks_written = 0
     for feature_key, entries in result["results"].items():
         for entry in entries:
             output = entry.get("output") or {}
@@ -556,8 +611,9 @@ def persist_pipeline_result(
             utterance_ref = (
                 str(sentence_indices[0]) if sentence_indices else None
             )
+            item_id = id_factory()
             repo.write_information_item(
-                item_id=id_factory(),
+                item_id=item_id,
                 session_id=session_id,
                 feature_key=feature_key,
                 input_ref=entry["input"],
@@ -566,8 +622,14 @@ def persist_pipeline_result(
                 transcript_id=transcript_id,
                 utterance_ref=utterance_ref,
                 review_status=review_status,
+                gravity=output.get("gravity"),
             )
             items_written += 1
+            # v1.4: every quality check run on this error's correction, pass or fail
+            for check_type, check in (output.get("checks") or {}).items():
+                repo.write_correction_check(id_factory(), item_id, session_id, check_type, check["passed"],
+                                            run_id=run_id, detail=check.get("detail"))
+                checks_written += 1
 
     metric_values_written = 0
     metric_key_by_feature = {row[0]: row[3] for row in PHASE1_TAXONOMY}
@@ -591,7 +653,8 @@ def persist_pipeline_result(
         )
         metric_values_written += 1
 
-    return {"information_items_written": items_written, "metric_values_written": metric_values_written}
+    return {"information_items_written": items_written, "metric_values_written": metric_values_written,
+            "correction_checks_written": checks_written}
 
 
 if __name__ == "__main__":
@@ -621,7 +684,10 @@ if __name__ == "__main__":
             "structure_breadth_score": 2,
             "results": {
                 "GDD-1": [
-                    {"input": "s1", "skipped": False, "output": {"error": True, "confidence": "high", "sentence_indices": [0]}},
+                    {"input": "s1", "skipped": False, "output": {"error": True, "confidence": "high", "sentence_indices": [0],
+                                                                "gravity": 3, "checks": {
+                                                                    "no_added_words": {"passed": True, "detail": None},
+                                                                    "recheck_clean": {"passed": False, "detail": "still wrong"}}}},
                     {"input": "s2", "skipped": False, "output": {"error": False, "sentence_indices": [1]}},
                     {"input": "s3", "skipped": True, "output": None},
                 ],
@@ -677,6 +743,12 @@ if __name__ == "__main__":
             "only the flagged GDD-1 sentence ('s1', error=True) should have a row -- "
             "'s2' (error=False) and 's3' (skipped) must not"
         )
+
+        checks = repo.list_correction_checks(session_id, run_id="run-test-1")
+        assert summary["correction_checks_written"] == 2 and len(checks) == 2, checks
+        assert {(c["check_type"], bool(c["passed"])) for c in checks} == {("no_added_words", True), ("recheck_clean", False)}
+        assert gdd1_items[0]["gravity"] == 3, "gravity must land in its own column"
+        print("correction_checks + gravity column confirmed:", [(c["check_type"], c["passed"], c["detail"]) for c in checks])
 
         repo.create_report2_export("export-test-1", session_id, "file:///tmp/fake.xlsx",
                                    run_id="run-test-1", row_count=len(items))

@@ -18,6 +18,11 @@ Policy decisions this prompt encodes (Dan, 2026-09-24):
 - One entry per error, not per sentence: two errors in one sentence are two
   entries, each with its own fix.
 
+2026-10-10: each error also gets a `gravity` 1-5 -- error gravity, how
+serious it sounds to a native listener (1 natives say it too ... 4 meaning
+distorted, 5 unintelligible). Report 1 shows each fluenceme's highest-
+gravity errors first (Dan's decision). Example ratings below are Claude's.
+
 2026-10-06, tuning round after the first retest: never merge two errors
 into one entry (M27); clean sentences drop ALL repetition and add no
 content the learner didn't say (M26); a form that is wrong in every
@@ -51,7 +56,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.batching import batch_input
-from pipeline.flag_quality import apply_fix, clean_has_fix
+from pipeline.flag_quality import added_content, apply_fix, clean_has_fix
 from pipeline.metric_types import PromptConfig
 
 FINDER_KEY = "ERROR_FINDER"
@@ -76,6 +81,13 @@ For each error return, in this order:
 - said: the wrong words, copied character for character from the sentence -- the shortest stretch that contains the whole error. It must appear only once in the sentence; add a neighbouring word if needed. If the fix needs changes in two places (e.g. "habe ... gemacht"), make said cover everything between them.
 - reasoning: one short sentence naming the rule AND the correct form, e.g. "Karte is feminine; mit takes the dative, so 'der Karte'."
 - fix: exactly the text that replaces said, with only this error fixed and everything else inside said unchanged (fillers and restarts included). Check it against your reasoning before writing it. Empty string if the words should simply be deleted.
+- gravity: how serious the error sounds to a native listener (error gravity), 1-5:
+  1 = barely noticeable; natives often say it this way in casual speech
+  2 = clearly a learner error, but the meaning is fully intact (e.g. a wrong article or ending)
+  3 = jarring: a native stumbles for a moment, though the meaning stays clear (e.g. "Vielleicht ich bin", tense drift in a story)
+  4 = confusing: the meaning is distorted or the listener has to guess (e.g. a wrong word that means something else)
+  5 = unintelligible: the listener can't tell what was meant
+  Rate the error itself, not the restarts or fillers around it.
 - confidence: "high" if you are sure it is an error; "low" only if a native speaker might accept the words as said, or you can't tell what the learner meant. If the form is wrong in every possible reading (e.g. a dative verb with an accusative pronoun), it is "high" even when you don't know what the pronoun refers to.
 - self_corrected: true if the learner corrected this error themselves later in the same sentence
 - possible_transcription_error: true if the words look misheard by the speech recognizer (nonsense in context) rather than a learner mistake
@@ -106,35 +118,35 @@ _EXAMPLE_SENTENCES = [
 ]
 
 
-def _err(index, said, reasoning, fix, *, self_corrected=False):
-    return {"index": index, "said": said, "reasoning": reasoning, "fix": fix,
+def _err(index, said, reasoning, fix, gravity, *, self_corrected=False):
+    return {"index": index, "said": said, "reasoning": reasoning, "fix": fix, "gravity": gravity,
             "confidence": "high", "self_corrected": self_corrected, "possible_transcription_error": False}
 
 
 _EXAMPLE_ERRORS = [
     _err(1, "ist fast Schlafzeit", "In a weil-clause the conjugated verb goes to the end: 'fast Schlafzeit ist'.",
-         "fast Schlafzeit ist"),
-    _err(1, "Schlafzeit", "The German word for bedtime is 'Schlafenszeit'.", "Schlafenszeit"),
-    _err(3, "kommt", "The story is about last year, so past tense 'kam', not present 'kommt'.", "kam"),
-    _err(4, "mache", "The previous sentence set a past time frame ('letztes Jahr'), so past tense 'machte'.", "machte"),
-    _err(4, "ein Urlaub", "'Urlaub' is masculine and the direct object, so accusative 'einen Urlaub'.", "einen Urlaub"),
+         "fast Schlafzeit ist", 1),
+    _err(1, "Schlafzeit", "The German word for bedtime is 'Schlafenszeit'.", "Schlafenszeit", 2),
+    _err(3, "kommt", "The story is about last year, so past tense 'kam', not present 'kommt'.", "kam", 3),
+    _err(4, "mache", "The previous sentence set a past time frame ('letztes Jahr'), so past tense 'machte'.", "machte", 2),
+    _err(4, "ein Urlaub", "'Urlaub' is masculine and the direct object, so accusative 'einen Urlaub'.", "einen Urlaub", 2),
     _err(6, "zurückkommen— nach Amerika zurückkommen",
          "An als-clause needs a conjugated past verb, 'zurückkam', not the infinitive; the restart repeats the same "
-         "mistake, so it counts once.", "zurückkam— nach Amerika zurückkam"),
-    _err(6, "lerne", "The als-clause sets a past time frame, so past tense 'lernte', not present 'lerne'.", "lernte"),
+         "mistake, so it counts once.", "zurückkam— nach Amerika zurückkam", 3),
+    _err(6, "lerne", "The als-clause sets a past time frame, so past tense 'lernte', not present 'lerne'.", "lernte", 2),
     _err(7, "diese, diese", "'Gespräch' is neuter: 'dieses Gespräch'; the restart repeats the same mistake, so it "
-         "counts once.", "dieses, dieses"),
-    _err(7, "zu aufnehmen", "With a separable verb, 'zu' goes between prefix and stem: 'aufzunehmen'.", "aufzunehmen"),
-    _err(9, "man 40er ist", "The plural form is '40ern'; the learner fixed this in the restart.", "man 40ern ist",
+         "counts once.", "dieses, dieses", 2),
+    _err(7, "zu aufnehmen", "With a separable verb, 'zu' goes between prefix and stem: 'aufzunehmen'.", "aufzunehmen", 2),
+    _err(9, "man 40er ist", "The plural form is '40ern'; the learner fixed this in the restart.", "man 40ern ist", 1,
          self_corrected=True),
     _err(9, "— 40ern ist", "Being in your forties is 'in den 40ern sein'; the preposition and article are missing.",
-         "— in den 40ern ist"),
-    _err(10, "seine Job", "'Job' is masculine, so the accusative possessive is 'seinen Job'.", "seinen Job"),
-    _err(10, "verkündigt", "Quitting a job is 'kündigen', so 'gekündigt'; 'verkündigen' means to announce.", "gekündigt"),
+         "— in den 40ern ist", 3),
+    _err(10, "seine Job", "'Job' is masculine, so the accusative possessive is 'seinen Job'.", "seinen Job", 2),
+    _err(10, "verkündigt", "Quitting a job is 'kündigen', so 'gekündigt'; 'verkündigen' means to announce.", "gekündigt", 4),
     _err(12, "suche für", "'suchen' takes a direct object; 'für' is copied from English 'look for', so just 'suche'.",
-         "suche"),
+         "suche", 3),
     _err(12, "Muttersprachlerin", "Paired with plural 'Muttersprachler', the feminine form must be plural too: "
-         "'Muttersprachlerinnen'.", "Muttersprachlerinnen"),
+         "'Muttersprachlerinnen'.", "Muttersprachlerinnen", 1),
 ]
 
 _EXAMPLE_CLEAN = [
@@ -155,11 +167,12 @@ _ERROR_ITEM_SCHEMA = {
         "said": {"type": "STRING"},
         "reasoning": {"type": "STRING"},
         "fix": {"type": "STRING"},
+        "gravity": {"type": "INTEGER", "enum": [1, 2, 3, 4, 5]},
         "confidence": {"type": "STRING", "enum": ["high", "low"]},
         "self_corrected": {"type": "BOOLEAN"},
         "possible_transcription_error": {"type": "BOOLEAN"},
     },
-    "required": ["index", "said", "reasoning", "fix", "confidence", "self_corrected",
+    "required": ["index", "said", "reasoning", "fix", "gravity", "confidence", "self_corrected",
                  "possible_transcription_error"],
 }
 _CLEAN_ITEM_SCHEMA = {
@@ -200,7 +213,8 @@ def find_errors(provider, indexed_sentences: list[tuple[int, str]]) -> list[dict
       said_not_found  True if `said` isn't in the sentence (then corrected "")
       clean           the model's clean version of that sentence ("" if none)
       understandable  False if the model couldn't tell what was meant
-      clean_ok        clean exists, is understandable and contains this fix
+      checks          {check_type: {"passed", "detail"}} for this error's correction
+      clean_ok        clean exists, is understandable and passed every check
     Entries pointing at a sentence that wasn't sent are dropped (a model
     slip, never guessed onto a nearby sentence)."""
     raw = provider.classify(FINDER_CONFIG, batch_input(indexed_sentences))
@@ -212,7 +226,7 @@ def find_errors(provider, indexed_sentences: list[tuple[int, str]]) -> list[dict
     # Strict-schema providers always return every field; the defaults only
     # matter for a provider without strict output, and err on the side of
     # "not trustworthy" (low confidence) rather than inventing certainty.
-    defaults = {"said": "", "reasoning": "", "fix": "", "confidence": "low",
+    defaults = {"said": "", "reasoning": "", "fix": "", "gravity": None, "confidence": "low",
                 "self_corrected": False, "possible_transcription_error": False}
     errors = []
     for e in raw.get("errors", []):
@@ -224,9 +238,25 @@ def find_errors(provider, indexed_sentences: list[tuple[int, str]]) -> list[dict
         clean = (c.get("clean") or "").strip()
         understandable = bool(c.get("understandable", False))
         e.update(corrected=corrected or "", said_not_found=corrected is None, clean=clean,
-                 understandable=understandable,
-                 clean_ok=understandable and clean_has_fix(clean, e["said"], e["fix"]))
+                 understandable=understandable)
         errors.append(e)
+    # Correction checks (2026-10-07/10, stored per error in correction_checks).
+    # Only errors with a clean sentence get them; the re-check is added by
+    # the pipeline after its own call (pipeline.find_and_sort).
+    fixes_by_index: dict[int, list[str]] = {}
+    for e in errors:
+        fixes_by_index.setdefault(e["index"], []).append(e["fix"])
+    for e in errors:
+        e["checks"] = {}
+        if e["understandable"] and e["clean"]:
+            added = added_content(e["clean"], text[e["index"]], fixes_by_index[e["index"]])
+            e["checks"]["clean_contains_fix"] = {"passed": clean_has_fix(e["clean"], e["said"], e["fix"]),
+                                                 "detail": None}
+            e["checks"]["no_added_words"] = {"passed": not added, "detail": ", ".join(added) or None}
+        for c in e["checks"].values():
+            if not c["passed"] and c["detail"] is None:
+                c["detail"] = f"clean sentence lacks the fix {e['fix']!r}"
+        e["clean_ok"] = bool(e["checks"]) and all(c["passed"] for c in e["checks"].values())
     return errors
 
 

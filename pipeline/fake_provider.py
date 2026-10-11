@@ -14,6 +14,7 @@ Fake behaviour, by prompt:
                 for each, except every 6th index (not understandable);
                 every 9th index's error is marked a possible transcription
                 error; with bad_said=True `said` is never in the sentence
+  CLEAN_RECHECK the first clean sentence of each call fails the re-check
   ERROR_SORTER  tags cycle through every error tag in registry order; with
                 leave_untagged=True the last error of each call gets no tag
   labelers      STRUCTURE_BREADTH gets a repeating, overlapping label cycle
@@ -28,6 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from pipeline.clean_check import RECHECK_KEY
 from pipeline.error_finder import FINDER_KEY
 from pipeline.error_sorter import SORTER_KEY
 from pipeline.registry import ERROR_TAGS
@@ -57,6 +59,11 @@ class FakeProvider:
             hits = [it for it in items if it["index"] % self.error_every == 0]
             return {"errors": [self._fake_error(it) for it in hits],
                     "clean_sentences": [self._fake_clean(it) for it in hits]}
+        if config.key == RECHECK_KEY:
+            # the first clean sentence of each call "still has an error"
+            return {"errors": [{"index": 0, "said": "x", "reasoning": NOTE, "fix": "y", "gravity": 2,
+                                "confidence": "high", "self_corrected": False,
+                                "possible_transcription_error": False}], "clean_sentences": []}
         if config.key == SORTER_KEY:
             tags = list(ERROR_TAGS)
             answers = [{"id": it["id"], "tag": tags[it["id"] % len(tags)]} for it in items]
@@ -69,6 +76,7 @@ class FakeProvider:
             "said": "NOT-IN-SENTENCE" if self.bad_said else item["text"].split()[0],
             "reasoning": NOTE,
             "fix": "FAKEFIX",
+            "gravity": item["index"] % 5 + 1,
             "confidence": "high",
             "self_corrected": False,
             "possible_transcription_error": item["index"] % 9 == 0 and item["index"] > 0,

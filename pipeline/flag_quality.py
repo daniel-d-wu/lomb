@@ -12,6 +12,7 @@ so a "correction" that only drops a filler counts as no correction.
 """
 
 import difflib
+import os
 import re
 import sys
 from collections import Counter
@@ -75,6 +76,42 @@ def clean_has_fix(clean: str, said: str, fix: str) -> bool:
     added = Counter(content_words(fix)) - Counter(content_words(said))
     words = set(content_words(clean))
     return all(_word_present(w, words) for w in added)
+
+
+# Small grammatical words a clean sentence may add without changing what the
+# learner said (articles, pronouns, auxiliaries, prepositions, conjunctions,
+# particles). Anything else new in a clean sentence is "added content".
+FUNCTION_WORDS = set("""
+der die das den dem des ein eine einen einem einer eines kein keine keinen keinem keiner keines
+ich du er sie es wir ihr man mich dich sich uns euch mir dir ihm ihn ihnen
+mein meine meinen meinem meiner dein deine deinen deinem deiner sein seine seinen seinem seiner
+unser unsere unseren unserem euer eure
+bin bist ist sind seid war waren warst habe hast hat haben habt hatte hatten hattest
+werde wirst wird werden wurde wurden würde würden kann kannst können konnte muss musst müssen
+soll sollst sollen sollte will willst wollen möchte möchten mag
+in im ins an am ans auf aus bei beim mit nach von vom zu zum zur über unter vor hinter neben zwischen
+durch für gegen ohne um seit bis als wie
+und oder aber denn dann dass weil wenn ob so auch noch schon nur nicht nichts doch mal ja nein
+da dort hier jetzt sehr viel mehr gerade eben wohl gar
+""".split())
+
+
+def added_content(clean: str, sentence: str, fixes: list[str]) -> list[str]:
+    """Real words in the clean sentence that the learner never said and no
+    fix introduced -- e.g. 'Juni' in 'letztes Mal war es im Juni' when the
+    learner trailed off after 'letzten Mal war'. Small grammatical words are
+    allowed (FUNCTION_WORDS), and so are other forms of a word the learner
+    did say (shared stem of 5+ letters: 'erkundet'/'erkundigt').
+    Added 2026-10-07 (failure mode M26)."""
+    source = set(content_words(sentence)) | {w for f in fixes for w in content_words(f)}
+    out = []
+    for w in content_words(clean):
+        if w in source or w in FUNCTION_WORDS or w.isdigit():
+            continue
+        if any(len(os.path.commonprefix([w, s])) >= min(5, len(w), len(s)) for s in source if len(s) >= 4):
+            continue
+        out.append(w)
+    return out
 
 
 def rejection_reason(output: dict | None, said: str) -> str | None:

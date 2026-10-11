@@ -71,7 +71,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.fake_provider import FakeProvider
 from pipeline.pipeline import run_pipeline_from_turns
-from reporting.report import build_report
+from reporting.report import build_report, render_html
 from storage.storage import SQLiteStorageRepository, persist_pipeline_result
 from transcript_processing.whisperx_adapter import (
     REPETITION_RUN_THRESHOLD, filter_repetition_loops, from_whisperx_transcript,
@@ -92,7 +92,8 @@ DEFAULT_USER_ID = "1"  # the one enrolled voiceprint in voiceprints_dev.sqlite (
 # attached to it, not just "no exception was raised."
 ESSENTIAL_TABLES = [
     "sessions", "audio_assets", "transcripts",
-    "analysis_runs", "information_items", "metric_values", "report2_exports", "report_snapshots",
+    "analysis_runs", "information_items", "correction_checks", "metric_values", "report2_exports",
+    "report_snapshots",
 ]
 
 
@@ -336,6 +337,15 @@ def main() -> int:
         run_id=run_id, transcript_id=transcript_id,
     )
     print(f"report_snapshots: 1 row written (report_id={report_id})")
+
+    # Readable copies next to the database, for manual review of a test run:
+    # the full pipeline result (every error, fix and clean sentence) and
+    # Report 1 as HTML.
+    with open(db_path.parent / "pipeline_result.json", "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=1)
+    with open(db_path.parent / "report1.html", "w", encoding="utf-8") as f:
+        f.write(render_html(report1_payload))
+    print(f"saved: {db_path.parent / 'pipeline_result.json'} and report1.html")
 
     repo.update_session(
         session_id, status="complete",

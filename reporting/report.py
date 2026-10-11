@@ -152,16 +152,28 @@ def _card_good(entry: dict) -> str | None:
     return out["clean"] if out["clean_ok"] else None
 
 
+GRAVITY_LABELS = {1: "minor", 2: "noticeable", 3: "jarring", 4: "confusing", 5: "unintelligible"}
+
+
+def _gravity(entry: dict) -> int:
+    """1-5 error gravity from the finder (0 for results from before 2026-10-10)."""
+    return entry["output"].get("gravity") or 0
+
+
 def _card_rank(entry: dict) -> tuple:
-    """Clearer lesson first: fewest words changed, then shorter sentence."""
+    """Most serious first (error gravity), then the clearer lesson: fewest
+    words changed, then shorter sentence."""
     good = entry["output"].get("corrected") or entry["input"]
-    return (changed_word_count(entry["input"], good), len(entry["input"].split()))
+    return (-_gravity(entry), changed_word_count(entry["input"], good), len(entry["input"].split()))
 
 
 def _build_accuracy(results: dict) -> dict:
     """Pick which flagged errors a learner sees, per metric (2026-09-24,
     replacing "first 2 in sentence order"):
 
+    0. (2026-10-10, Dan) Highest error gravity first: within each fluenceme
+       the most serious mistakes (1-5, how bad it sounds to a native) get the
+       card slots, and cards are ordered most serious first.
     1. Only trustworthy flags (pipeline/flag_quality.py) -- a wrong or empty
        correction teaches the wrong thing.
     2. Same mistake with the same word repeated -> ONE card, with
@@ -200,7 +212,8 @@ def _build_accuracy(results: dict) -> dict:
                 no_clean[metric] += 1
                 continue
             groups[fix_signature(e["input"], e["output"].get("corrected") or e["input"])].append(e)
-        ranked_groups = sorted(groups.values(), key=lambda g: (-len(g), _card_rank(min(g, key=_card_rank))))
+        ranked_groups = sorted(groups.values(),
+                               key=lambda g: (-max(map(_gravity, g)), -len(g), _card_rank(min(g, key=_card_rank))))
 
         shown = 0
         for group in ranked_groups:
@@ -208,7 +221,7 @@ def _build_accuracy(results: dict) -> dict:
             if example is None:
                 continue
             shown_sentences.add(example["input"])
-            cards.append((-len(group), rank, {
+            cards.append(((-_gravity(example), -len(group)), rank, {
                 "tag": TAGS[metric],
                 "bad": example["input"],
                 "good": _card_good(example),
@@ -217,6 +230,7 @@ def _build_accuracy(results: dict) -> dict:
                         if "fix" in example["output"] else None),
                 "why": example["output"]["reasoning"],
                 "occurrences": len(group),
+                "gravity": example["output"].get("gravity"),
                 "alsoTags": [TAGS[m] for m in tags_by_sentence[example["input"]] if m != metric],
             }))
             shown += 1
@@ -244,7 +258,7 @@ def _build_accuracy(results: dict) -> dict:
         coverage.append(f"{n_asr} flag(s) looked like speech-recognition mishearings, not learner errors -- "
                         f"not counted, not shown.")
 
-    cards.sort(key=lambda c: (c[0], c[1]))
+    cards.sort(key=lambda c: (c[0], c[1]))  # most serious, then repeated mistakes, then fluenceme order
     return {"errors": [card for _, _, card in cards], "_coverage_notes": coverage}
 
 
@@ -414,6 +428,9 @@ def render_html(report: dict) -> str:
                                else _diff_html(e["bad"], e["good"]))
         repeat = (f'<span class="tag repeat">Seen {e["occurrences"]}× this session</span>'
                   if e.get("occurrences", 1) > 1 else "")
+        if e.get("gravity"):
+            repeat += (f'<span class="tag grav g{e["gravity"]}">Gravity {e["gravity"]}/5 · '
+                       f'{GRAVITY_LABELS[e["gravity"]]}</span>')
         also = (f'<div class="also">Also in this sentence: {escape(", ".join(e["alsoTags"]))}</div>'
                 if e.get("alsoTags") else "")
         cards.append(f"""
@@ -465,6 +482,7 @@ h2 {{ font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ddd; paddin
 .sentence {{ font-size: 1rem; line-height: 1.5; }}
 .bad-sentence {{ margin-bottom: .25rem; }}
 .tag.repeat {{ background: #fdf0d5; margin-left: .4rem; }}
+.tag.grav {{ margin-left: .4rem; }} .g1, .g2 {{ background: #e8f0e8; }} .g3 {{ background: #fdf0d5; }} .g4, .g5 {{ background: #f9dcdc; }}
 .also {{ font-size: .8rem; color: #666; margin-top: .35rem; }}
 .bad-hl {{ color: #b3261e; font-weight: 600; }}
 .good-hl {{ color: #1e7a34; font-weight: 600; }}
