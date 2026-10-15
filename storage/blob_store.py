@@ -4,9 +4,9 @@ Where the big files live: uploaded audio, the raw transcript JSON, Report 2
 storage_uri, transcripts.raw_json_uri, report2_exports.storage_uri).
 
 Same seam pattern as StorageRepository: lesson jobs are written against
-BlobStore; LocalBlobStore (a folder) is for development and tests, and a
-Google Cloud Storage implementation (gs://bucket/key) is added for
-production without changing any caller. Added 2026-10-11.
+BlobStore; LocalBlobStore (a folder) is for development and tests,
+GCSBlobStore (gs://bucket/key, 2026-10-14) for production. No caller
+changes between them.
 """
 
 import shutil
@@ -66,3 +66,42 @@ class LocalBlobStore(BlobStore):
     def exists(self, uri):
         p = Path(uri)
         return p.is_file() and p.stat().st_size > 0
+
+
+class GCSBlobStore(BlobStore):
+    """Google Cloud Storage; URIs are gs://bucket/key. Credentials come from
+    the environment (the service account on Cloud Run) unless a client is
+    passed in."""
+
+    def __init__(self, bucket: str, *, client=None):
+        if client is None:
+            from google.cloud import storage
+            client = storage.Client()
+        self.bucket_name = bucket
+        self._bucket = client.bucket(bucket)
+
+    def _uri(self, key: str) -> str:
+        return f"gs://{self.bucket_name}/{key}"
+
+    def _blob(self, uri: str):
+        prefix = f"gs://{self.bucket_name}/"
+        if not uri.startswith(prefix):
+            raise ValueError(f"not in bucket {self.bucket_name}: {uri!r}")
+        return self._bucket.blob(uri[len(prefix):])
+
+    def put_file(self, local_path, key):
+        self._bucket.blob(key).upload_from_filename(str(local_path))
+        return self._uri(key)
+
+    def put_bytes(self, data, key):
+        self._bucket.blob(key).upload_from_string(data)
+        return self._uri(key)
+
+    def fetch(self, uri, local_path):
+        local_path = Path(local_path)
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        self._blob(uri).download_to_filename(str(local_path))
+        return local_path
+
+    def exists(self, uri):
+        return self._blob(uri).exists()

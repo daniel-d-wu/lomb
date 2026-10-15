@@ -1,0 +1,20 @@
+# What `gcloud builds submit` uploads to Cloud Build: only what the worker
+# image copies. Everything else -- docs/ (local only, never shared), test
+# runs, audio, data, git history -- stays on this machine.
+*
+!pipeline/**
+!prompts/**
+!providers/**
+!reporting/**
+!service/**
+!storage/**
+!transcript_processing/**
+!voice_enrollment/**
+!worker/**
+**/__pycache__/**
+**/*.pyc
+**/*.sqlite
+**/*.wav
+**/*.m4a
+**/*.mp3
+**/*.webm
