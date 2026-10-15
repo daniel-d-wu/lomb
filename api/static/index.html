@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lomb</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #e3e1da;
+    --accent: #2f5d50; --accent-ink: #ffffff; --soft: #eef3f1; --bad: #a33a2b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151614; --card: #1f201d; --ink: #ecebe6; --muted: #a09f98; --line: #34352f;
+      --accent: #7fb8a5; --accent-ink: #10201b; --soft: #24302b; --bad: #e08a7c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  header p { margin: 4px 0 24px; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 18px; }
+  .drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 32px 16px; text-align: center;
+          cursor: pointer; color: var(--muted); }
+  .drop.over, .drop:hover { border-color: var(--accent); background: var(--soft); }
+  .drop strong { color: var(--ink); }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  select, button { font: inherit; }
+  select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  button { padding: 10px 18px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink);
+           cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .muted { color: var(--muted); font-size: 14px; }
+  .error { color: var(--bad); }
+  ol.steps { list-style: none; padding: 0; margin: 0; }
+  ol.steps li { padding: 8px 0 8px 32px; position: relative; color: var(--muted); }
+  ol.steps li::before { content: ""; position: absolute; left: 4px; top: 13px; width: 12px; height: 12px;
+                        border-radius: 50%; border: 2px solid var(--line); }
+  ol.steps li.active { color: var(--ink); font-weight: 600; }
+  ol.steps li.active::before { border-color: var(--accent); animation: pulse 1.2s infinite; }
+  ol.steps li.done { color: var(--ink); }
+  ol.steps li.done::before { background: var(--accent); border-color: var(--accent); }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px var(--soft); } }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 4px 0 0; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  .speaker { border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 12px; }
+  .speaker .meta { color: var(--muted); font-size: 14px; }
+  .speaker blockquote { margin: 8px 0 12px; padding-left: 12px; border-left: 3px solid var(--line); font-style: italic; }
+  iframe { width: 100%; border: 0; min-height: 600px; background: #fff; border-radius: 8px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Lomb</h1>
+    <p>Upload a recorded German lesson. Lomb finds your mistakes and shows you how to fix them.</p>
+  </header>
+
+  <section class="card" id="upload">
+    <h2>1 · Your recording</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.flac,.aac,.mp4" hidden>
+      <strong>Choose an audio file</strong> or drop it here<br>
+      <span class="muted">m4a, mp3, wav, webm … up to 300 MB</span>
+    </label>
+    <p id="chosen" class="muted" hidden></p>
+    <div class="row">
+      <label for="speakers">People talking:</label>
+      <select id="speakers">
+        <option value="">Not sure</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      <button id="start" disabled>Analyze</button>
+    </div>
+    <p id="uploadError" class="error" hidden></p>
+  </section>
+
+  <section class="card" id="progress" hidden>
+    <h2>2 · Working on it</h2>
+    <ol class="steps">
+      <li data-step="upload">Uploading<div class="bar"><div id="uploadBar"></div></div></li>
+      <li data-step="transcribing">Transcribing and separating voices</li>
+      <li data-step="awaiting_speaker_selection">Choosing your voice</li>
+      <li data-step="analyzing">Finding mistakes and checking corrections</li>
+      <li data-step="complete">Report ready</li>
+    </ol>
+    <p class="muted" id="elapsed"></p>
+  </section>
+
+  <section class="card" id="picker" hidden>
+    <h2>Which one is you?</h2>
+    <p class="muted">Lomb heard these voices. Pick yours so it only analyzes what you said.</p>
+    <div id="speakerList"></div>
+  </section>
+
+  <section class="card" id="failed" hidden>
+    <h2 class="error">Something went wrong</h2>
+    <p>This lesson couldn't be analyzed. Try again, or try a different recording.</p>
+    <button class="ghost" onclick="startOver()">Start over</button>
+  </section>
+
+  <section id="result" hidden>
+    <div class="row" style="margin: 0 0 12px;">
+      <a id="report2" href="#"><button class="ghost">Download the full error list (.xlsx)</button></a>
+      <button class="ghost" onclick="startOver()">Analyze another lesson</button>
+    </div>
+    <iframe id="report" title="Your report"></iframe>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ORDER = ["upload", "transcribing", "awaiting_speaker_selection", "analyzing", "complete"];
+let file = null, sessionId = null, pollTimer = null, startedAt = null;
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+  return body;
+}
+
+function show(id, on = true) { $(id).hidden = !on; }
+
+function setStage(stage) {
+  const idx = ORDER.indexOf(stage);
+  document.querySelectorAll("ol.steps li").forEach((li) => {
+    const i = ORDER.indexOf(li.dataset.step);
+    li.classList.toggle("done", i < idx || stage === "complete");
+    li.classList.toggle("active", i === idx && stage !== "complete");
+  });
+}
+
+function pickFile(f) {
+  if (!f) return;
+  file = f;
+  $("chosen").textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
+  show("chosen"); $("start").disabled = false;
+}
+
+$("file").addEventListener("change", (e) => pickFile(e.target.files[0]));
+["dragenter", "dragover"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", (e) => pickFile(e.dataTransfer.files[0]));
+
+function putFile(url, f, contentType) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) $("uploadBar").style.width = `${(100 * e.loaded / e.total).toFixed(0)}%`; };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`upload failed (${xhr.status})`)));
+    xhr.onerror = () => reject(new Error("upload failed (network)"));
+    xhr.send(f);
+  });
+}
+
+$("start").addEventListener("click", async () => {
+  $("start").disabled = true; show("uploadError", false);
+  show("progress"); setStage("upload"); startedAt = Date.now();
+  try {
+    const contentType = file.type || "application/octet-stream";
+    const up = await api("/api/uploads", { method: "POST",
+      body: JSON.stringify({ filename: file.name, size_bytes: file.size, content_type: contentType }) });
+    await putFile(up.upload_url, file, contentType);
+    const speakers = $("speakers").value;
+    const s = await api("/api/sessions", { method: "POST",
+      body: JSON.stringify({ storage_uri: up.storage_uri, num_speakers: speakers ? Number(speakers) : null }) });
+    sessionId = s.session_id;
+    location.hash = `session=${sessionId}`;
+    show("upload", false);
+    poll();
+  } catch (err) {
+    show("progress", false); $("start").disabled = false;
+    $("uploadError").textContent = err.message; show("uploadError");
+  }
+});
+
+async function poll() {
+  clearTimeout(pollTimer);
+  let s;
+  try { s = await api(`/api/sessions/${sessionId}`); }
+  catch (err) { pollTimer = setTimeout(poll, 5000); return; }
+  const mins = startedAt ? Math.floor((Date.now() - startedAt) / 60000) : null;
+  $("elapsed").textContent = s.status === "processing"
+    ? `A 30-minute lesson takes about 5–8 minutes${mins !== null ? ` · ${mins} min so far` : ""}. You can leave this page open or come back to this link later.`
+    : "";
+  setStage(s.stage);
+  if (s.status === "awaiting_speaker_selection") { renderPicker(s.speakers); return; }
+  show("picker", false);
+  if (s.status === "complete") return showResult();
+  if (s.status === "failed") { show("progress", false); show("failed"); return; }
+  pollTimer = setTimeout(poll, 4000);
+}
+
+function renderPicker(speakers) {
+  show("picker");
+  $("speakerList").innerHTML = "";
+  speakers.forEach((sp, i) => {
+    const div = document.createElement("div");
+    div.className = "speaker";
+    const minutes = (sp.talk_seconds / 60).toFixed(1);
+    div.innerHTML = `<strong>Voice ${i + 1}</strong> <span class="meta">· ${minutes} min · ${sp.word_count} words</span>
+      <blockquote></blockquote><button>This is me</button>`;
+    div.querySelector("blockquote").textContent = `“${sp.preview_text}…”`;
+    div.querySelector("button").addEventListener("click", () => choose(sp.speaker_label));
+    $("speakerList").appendChild(div);
+  });
+}
+
+async function choose(label) {
+  document.querySelectorAll("#speakerList button").forEach((b) => (b.disabled = true));
+  try {
+    await api(`/api/sessions/${sessionId}/speaker`, { method: "POST", body: JSON.stringify({ speaker_label: label }) });
+    show("picker", false); setStage("analyzing"); pollTimer = setTimeout(poll, 3000);
+  } catch (err) {
+    alert(err.message);
+    document.querySelectorAll("#speakerList button").forEach((b) => (b.disabled = false));
+  }
+}
+
+function showResult() {
+  show("progress", false); show("picker", false); show("result");
+  $("report2").href = `/api/sessions/${sessionId}/report2`;
+  const frame = $("report");
+  frame.onload = () => { try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 40 + "px"; } catch (e) {} };
+  frame.src = `/api/sessions/${sessionId}/report`;
+}
+
+function startOver() {
+  clearTimeout(pollTimer);
+  location.hash = ""; location.reload();
+}
+
+// Opening a lesson's link again picks up where it is.
+const m = location.hash.match(/session=([\w-]+)/);
+if (m) { sessionId = m[1]; show("upload", false); show("progress"); poll(); }
+</script>
+</body>
+</html>

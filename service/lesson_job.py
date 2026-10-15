@@ -141,12 +141,53 @@ def submit_lesson(deps: LessonDeps, *, audio_path: str | Path, user_id: str | No
     return session_id
 
 
+def register_upload(deps: LessonDeps, *, storage_uri: str, user_id: str | None,
+                    source: str = "public_demo") -> str:
+    """Upload step when the audio is already in the BlobStore -- production:
+    the browser sends it straight to Cloud Storage, since a lesson is too big
+    to pass through the web API. Downloads it once to measure it, then creates
+    the session ('processing') and audio_assets rows together."""
+    session_id, audio_id = deps.ids("sess"), deps.ids("audio")
+    suffix = Path(storage_uri).suffix.lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        local = deps.blobs.fetch(storage_uri, Path(tmp) / f"audio{suffix}")
+        duration, size, digest = probe_duration_seconds(local), local.stat().st_size, sha256_of(local)
+    if duration <= 0:
+        raise ValueError("not a readable audio file")
+    with deps.repo.transaction():
+        deps.repo.create_session(session_id, source=source, user_id=user_id, status="processing")
+        deps.repo.create_audio_asset(audio_id, session_id, storage_uri=storage_uri, format=suffix.lstrip("."),
+                                     duration_seconds=duration, size_bytes=size, sha256=digest)
+    return session_id
+
+
+def speaker_choices(deps: LessonDeps, session_id: str) -> list[dict]:
+    """The "which one is you?" options for a session at the picker, rebuilt
+    from what's stored (latest transcript + speaker_resolutions) so the page
+    can be reloaded at any point. Most talkative speaker first."""
+    transcript = deps.repo.latest_transcript(session_id)
+    with tempfile.TemporaryDirectory() as tmp:
+        raw = deps.blobs.fetch(transcript["raw_json_uri"], Path(tmp) / "transcript.json")
+        turns, _ = _turns(json.loads(raw.read_text(encoding="utf-8")))
+    resolutions = deps.repo.list_speaker_resolutions(session_id)
+    similarity = {c["speaker_label"]: c["similarity"] for c in resolutions[-1]["candidates"]} if resolutions else {}
+    choices = []
+    for label in sorted({t.speaker_id for t in turns}):
+        own = [t for t in turns if t.speaker_id == label]
+        choices.append({"speaker_label": label, "similarity": similarity.get(label),
+                        "word_count": sum(len(t.text.split()) for t in own),
+                        "talk_seconds": round(sum(t.end - t.start for t in own), 1),
+                        "preview_text": " ".join(t.text for t in own)[:300]})
+    return sorted(choices, key=lambda c: -c["word_count"])
+
+
 def process_lesson(deps: LessonDeps, *, session_id: str, user_id: str | None,
                    num_speakers: int | None = None, speaker_override: str | None = None) -> LessonResult:
     """GPU worker step. Transcribes, identifies the learner, then analyses --
     or stops at 'awaiting_speaker_selection' when the voiceprint match isn't
     confident (the UI then shows the candidates)."""
     try:
+        deps.repo.update_session(session_id, status="processing")  # also when a queue retries a failed attempt
         with tempfile.TemporaryDirectory() as tmp:
             audio = _fetch_audio(deps, session_id, Path(tmp))
             whisperx_json = deps.transcriber.transcribe(str(audio), num_speakers=num_speakers)

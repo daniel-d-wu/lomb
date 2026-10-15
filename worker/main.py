@@ -11,7 +11,7 @@ invoke it (Cloud Tasks from the web API, step 5; Dan's account for tests).
        transcribe -> speaker picker pause (no voiceprints in the cloud yet)
   POST /resume   {session_id, speaker_label}
        record the pick -> analyse -> reports
-  GET  /healthz
+  GET  /health
 
 Both POSTs answer when the work is done. A failure marks the session
 'failed' (lesson_job does that) and returns 500, so a queue can retry.
@@ -67,7 +67,7 @@ def _summary(out: LessonResult) -> dict:
 
 
 # Plain `def`, not `async def`: FastAPI runs these in a thread, so a
-# minutes-long lesson doesn't block /healthz.
+# minutes-long lesson doesn't block /health.
 @app.post("/process")
 def process(req: ProcessRequest):
     try:
@@ -87,6 +87,6 @@ def resume(req: ResumeRequest):
     return _summary(out)
 
 
-@app.get("/healthz")
-def healthz():
+@app.get("/health")  # not /healthz: Cloud Run reserves paths ending in "z"
+def health():
     return {"ok": "deps" in state}

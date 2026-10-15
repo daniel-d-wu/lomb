@@ -35,21 +35,25 @@ def _secret(name: str) -> str:
     return value
 
 
-def cloud_deps(*, with_transcriber: bool) -> LessonDeps:
-    from providers.openai_provider import OpenAIProvider
+def cloud_deps(*, with_transcriber: bool, with_llm: bool = True) -> LessonDeps:
+    """The worker needs everything; the web API only the database and storage."""
     from storage.blob_store import GCSBlobStore
     from storage.postgres_repo import INSTANCE, PostgresStorageRepository, cloud_sql_connect
 
-    _secret("OPENAI_API_KEY")
     repo = PostgresStorageRepository(cloud_sql_connect(
         os.environ["LOMB_DB_USER"], os.environ.get("LOMB_DB_NAME", "lomb"),
         instance=os.environ.get("LOMB_DB_INSTANCE", INSTANCE)))
-    provider = OpenAIProvider(model=os.environ.get("LOMB_LLM_MODEL", "gpt-5.6-luna"),
-                              reasoning_effort=os.environ.get("LOMB_REASONING_EFFORT") or None)
+    provider = None
+    if with_llm:
+        from providers.openai_provider import OpenAIProvider
+        _secret("OPENAI_API_KEY")
+        provider = OpenAIProvider(model=os.environ.get("LOMB_LLM_MODEL", "gpt-5.6-luna"),
+                                  reasoning_effort=os.environ.get("LOMB_REASONING_EFFORT") or None)
     transcriber = None
     if with_transcriber:
         from transcript_processing.whisperx_engine import WhisperXTranscriber
         transcriber = WhisperXTranscriber(_secret("HF_TOKEN"))
     return LessonDeps(repo=repo, blobs=GCSBlobStore(os.environ["LOMB_BUCKET"]), transcriber=transcriber,
                       provider=provider, speaker_service=None,
-                      llm_model=provider.model, llm_settings=provider.generation_config)
+                      llm_model=provider.model if provider else "none",
+                      llm_settings=provider.generation_config if provider else {})

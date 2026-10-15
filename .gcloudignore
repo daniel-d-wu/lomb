@@ -1,5 +1,5 @@
-# What `gcloud builds submit` uploads to Cloud Build: only what the worker
-# image copies. Everything else -- docs/ (local only, never shared), test
+# What `gcloud builds submit` uploads to Cloud Build: only what the images
+# copy. Everything else -- docs/ (local only, never shared), test
 # runs, audio, data, git history -- stays on this machine.
 *
 !pipeline/**
@@ -11,6 +11,7 @@
 !transcript_processing/**
 !voice_enrollment/**
 !worker/**
+!api/**
 **/__pycache__/**
 **/*.pyc
 **/*.sqlite

@@ -353,6 +353,12 @@ class StorageRepository(ABC):
                                 *, run_id: str, transcript_id: str | None = None) -> None: ...
 
     @abstractmethod
+    def latest_report_snapshot(self, session_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def latest_report2_export(self, session_id: str) -> dict | None: ...
+
+    @abstractmethod
     def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
 
     @abstractmethod
@@ -653,6 +659,14 @@ class SQLStorageRepository(StorageRepository):
             """,
             (report_id, session_id, transcript_id, run_id, payload_json, _now()),
         )
+
+    def latest_report_snapshot(self, session_id: str) -> dict | None:
+        return self._one("SELECT * FROM report_snapshots WHERE session_id = ? ORDER BY generated_at DESC LIMIT 1",
+                         (session_id,))
+
+    def latest_report2_export(self, session_id: str) -> dict | None:
+        return self._one("SELECT * FROM report2_exports WHERE session_id = ? ORDER BY generated_at DESC LIMIT 1",
+                         (session_id,))
 
 
 class SQLiteStorageRepository(SQLStorageRepository):

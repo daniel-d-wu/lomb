@@ -30,6 +30,10 @@ class BlobStore(ABC):
     @abstractmethod
     def exists(self, uri: str) -> bool: ...
 
+    @abstractmethod
+    def read_bytes(self, uri: str) -> bytes:
+        """The whole object -- for small files like a Report 2 export."""
+
 
 class LocalBlobStore(BlobStore):
     """A folder on disk; URIs are absolute file paths."""
@@ -66,6 +70,9 @@ class LocalBlobStore(BlobStore):
     def exists(self, uri):
         p = Path(uri)
         return p.is_file() and p.stat().st_size > 0
+
+    def read_bytes(self, uri):
+        return Path(uri).read_bytes()
 
 
 class GCSBlobStore(BlobStore):
@@ -105,3 +112,14 @@ class GCSBlobStore(BlobStore):
 
     def exists(self, uri):
         return self._blob(uri).exists()
+
+    def read_bytes(self, uri):
+        return self._blob(uri).download_as_bytes()
+
+    def browser_upload_url(self, key: str, *, content_type: str, size: int, origin: str | None) -> str:
+        """A resumable-upload session the browser PUTs the file to directly
+        (no size limit from the web API in between). The URL itself is the
+        permission: it accepts this one object, and expires after a week if
+        unused. `origin` lets that page's JavaScript make the cross-site PUT."""
+        return self._bucket.blob(key).create_resumable_upload_session(content_type=content_type, size=size,
+                                                                     origin=origin)

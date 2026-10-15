@@ -1,0 +1,15 @@
+# Builds and pushes the web API image. Run from the repo root:
+#   gcloud builds submit --project lomb-prod --region us-east4 --config api/cloudbuild.yaml
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f=api/Dockerfile
+      - -t=us-east4-docker.pkg.dev/$PROJECT_ID/lomb/api:$BUILD_ID
+      - -t=us-east4-docker.pkg.dev/$PROJECT_ID/lomb/api:latest
+      - .
+images:
+  - us-east4-docker.pkg.dev/$PROJECT_ID/lomb/api:$BUILD_ID
+  - us-east4-docker.pkg.dev/$PROJECT_ID/lomb/api:latest
+options:
+  logging: CLOUD_LOGGING_ONLY

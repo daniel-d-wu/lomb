@@ -1,0 +1,11 @@
+# Web API dependencies, pinned (2026-10-14). No GPU or ML libraries: the
+# API only registers uploads, queues work for the worker and serves results.
+fastapi==0.143.1
+uvicorn[standard]==0.54.0
+pydantic==2.12.4
+cloud-sql-python-connector[pg8000]==1.22.0
+pg8000==1.31.5
+sqlalchemy==2.0.43
+google-cloud-storage==3.17.0
+google-cloud-tasks==2.26.0
+google-auth==2.50.0
