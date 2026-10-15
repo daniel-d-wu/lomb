@@ -129,6 +129,31 @@ CREATE TABLE IF NOT EXISTS analysis_runs (
     created_at           TEXT NOT NULL
 );
 
+-- v1.5: the "which diarized speaker is the user?" decision for a session,
+-- and every speaker considered with its voiceprint similarity -- so the
+-- 0.55 / 0.25 thresholds can later be checked against real outcomes.
+-- user_id has no FK yet: the users table isn't built.
+CREATE TABLE IF NOT EXISTS speaker_resolutions (
+    resolution_id          TEXT PRIMARY KEY,
+    session_id             TEXT NOT NULL REFERENCES sessions(session_id),
+    user_id                TEXT,
+    resolved_speaker_label TEXT,            -- NULL while awaiting the user's pick
+    expected_speaker_label TEXT,            -- ground truth, labeled calibration batches only
+    reason                 TEXT NOT NULL,   -- 'no_enrolled_voiceprint' / 'confident_match' / 'below_match_threshold' / 'ambiguous_margin'
+    outcome                TEXT,            -- 'auto_resolved' / 'flagged' / 'manual_override'
+    match_threshold_used   FLOAT,
+    margin_threshold_used  FLOAT,
+    resolved_at            TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS speaker_resolution_candidates (
+    candidate_id   TEXT PRIMARY KEY,
+    resolution_id  TEXT NOT NULL REFERENCES speaker_resolutions(resolution_id),
+    speaker_label  TEXT NOT NULL,           -- e.g. 'SPEAKER_00', meaningless outside this resolution
+    similarity     FLOAT NOT NULL,
+    rank           INTEGER NOT NULL         -- 1 = best candidate
+);
+
 CREATE TABLE IF NOT EXISTS constructs (
     construct_key    TEXT PRIMARY KEY,
     display_name     TEXT
@@ -214,7 +239,7 @@ CREATE TABLE IF NOT EXISTS report_snapshots (
     UNIQUE(run_id)
 );
 """
-SCHEMA_VERSION = "1.4"
+SCHEMA_VERSION = "1.5"
 
 # Taxonomy rows (feature_key, construct_key, computation_path, metric_key,
 # unit, formula), one per fluenceme. Derived from pipeline/registry.py as
@@ -264,6 +289,31 @@ class StorageRepository(ABC):
                            *, audio_id: str | None = None, target_speaker_label: str | None = None,
                            speaker_resolution_method: str | None = None, asr_model: str | None = None,
                            diarization_model: str | None = None, asr_settings: dict | None = None) -> None: ...
+
+    @abstractmethod
+    def get_audio_asset(self, session_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def get_transcript(self, transcript_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def latest_transcript(self, session_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def set_transcript_speaker(self, transcript_id: str, target_speaker_label: str, method: str) -> None: ...
+
+    @abstractmethod
+    def create_speaker_resolution(self, resolution_id: str, session_id: str, *, user_id: str | None,
+                                   resolved_speaker_label: str | None, reason: str, outcome: str,
+                                   match_threshold: float | None, margin_threshold: float | None,
+                                   candidates: list[tuple[str, str, float]]) -> None:
+        """candidates: (candidate_id, speaker_label, similarity), best first."""
+
+    @abstractmethod
+    def record_manual_speaker_pick(self, resolution_id: str, speaker_label: str) -> None: ...
+
+    @abstractmethod
+    def list_speaker_resolutions(self, session_id: str) -> list[dict]: ...
 
     @abstractmethod
     def create_analysis_run(self, run_id: str, session_id: str, transcript_id: str, *, llm_model: str,
@@ -404,6 +454,67 @@ class SQLiteStorageRepository(StorageRepository):
                  json.dumps(asr_settings, ensure_ascii=False) if asr_settings is not None else None,
                  raw_json_uri, target_speaker_label, speaker_resolution_method, _now()),
             )
+
+    def get_audio_asset(self, session_id: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM audio_assets WHERE session_id = ? ORDER BY uploaded_at DESC LIMIT 1",
+                               (session_id,)).fetchone()
+        return dict(row) if row else None
+
+    def get_transcript(self, transcript_id: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM transcripts WHERE transcript_id = ?", (transcript_id,)).fetchone()
+        return dict(row) if row else None
+
+    def latest_transcript(self, session_id: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM transcripts WHERE session_id = ? ORDER BY created_at DESC LIMIT 1",
+                               (session_id,)).fetchone()
+        return dict(row) if row else None
+
+    def set_transcript_speaker(self, transcript_id, target_speaker_label, method) -> None:
+        with self._connect() as conn:
+            conn.execute("UPDATE transcripts SET target_speaker_label = ?, speaker_resolution_method = ? "
+                         "WHERE transcript_id = ?", (target_speaker_label, method, transcript_id))
+
+    # --- speaker_resolutions --------------------------------------------------
+
+    def create_speaker_resolution(self, resolution_id, session_id, *, user_id, resolved_speaker_label, reason,
+                                   outcome, match_threshold, margin_threshold, candidates) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO speaker_resolutions
+                    (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
+                     match_threshold_used, margin_threshold_used, resolved_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
+                 match_threshold, margin_threshold, _now()),
+            )
+            conn.executemany(
+                "INSERT INTO speaker_resolution_candidates (candidate_id, resolution_id, speaker_label, similarity, rank) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [(cid, resolution_id, label, float(sim), rank) for rank, (cid, label, sim) in enumerate(candidates, 1)],
+            )
+
+    def record_manual_speaker_pick(self, resolution_id, speaker_label) -> None:
+        with self._connect() as conn:
+            conn.execute("UPDATE speaker_resolutions SET resolved_speaker_label = ?, outcome = 'manual_override', "
+                         "resolved_at = ? WHERE resolution_id = ?", (speaker_label, _now(), resolution_id))
+
+    def list_speaker_resolutions(self, session_id: str) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM speaker_resolutions WHERE session_id = ? ORDER BY resolved_at",
+                                (session_id,)).fetchall()
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["candidates"] = [dict(c) for c in conn.execute(
+                    "SELECT speaker_label, similarity, rank FROM speaker_resolution_candidates "
+                    "WHERE resolution_id = ? ORDER BY rank", (d["resolution_id"],)).fetchall()]
+                out.append(d)
+        return out
 
     # --- analysis_runs --------------------------------------------------------
 

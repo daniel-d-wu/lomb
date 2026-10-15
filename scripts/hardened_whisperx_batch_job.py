@@ -89,39 +89,11 @@ from pathlib import Path
 DEFAULT_AUDIO_DIR = r"C:\Users\Danie\Documents\Sound recordings\german_recordings\five_min_trunc"
 AUDIO_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac")
 
-# Loaded AND recorded in each transcript's _meta from these same constants,
-# so the provenance stored in the transcripts table can't drift from what
-# actually ran.
-ASR_MODEL = "large-v3"
-DIARIZATION_MODEL = "pyannote/speaker-diarization-community-1"
-LANGUAGE = "de"
-
-# Unchanged from the original notebook cell -- same instruction text,
-# same reasoning (verbatim/error-preserving transcription for a learner-
-# speech corpus). Kept as a module-level constant (not re-typed at the
-# call site) specifically so it can also be passed to
-# whisperx_adapter.filter_prompt_leak() below AND written into each
-# saved file's "_meta" block -- one source of truth for what the prompt
-# actually was, not three copies that could drift apart.
-INITIAL_PROMPT = (
-    "Strict verbatim German-English learner speech transcription. "
-    "Transcribe exactly what is acoustically spoken, even when the German is grammatically incorrect. "
-    "Do not correct, normalize, complete, or infer grammar from context. "
-    "When the acoustics conflict with what would be grammatically expected, prefer the acoustically supported form. "
-    "Do not add sounds, syllables, words, or inflectional endings merely because they would make the sentence grammatical. "
-    "Preserve incorrect articles, grammatical case, noun number, noun endings, "
-    "adjective endings, verb conjugations, verb forms, pronouns, prepositions, "
-    "word order, and nonstandard word forms exactly as spoken. "
-    "Do not add, remove, or change inflectional endings such as -n, -en, -e, -er, or -s. "
-    "Preserve incomplete, reduced, malformed, or learner-produced word forms instead of replacing them with standard German forms. "
-    "For example, if the speaker says 'vor drei Monat', write 'vor drei Monat', not 'vor drei Monaten'. "
-    "If the speaker says 'zwei Katze', write 'zwei Katze', not 'zwei Katzen'. "
-    "If the speaker says 'mit die Frau', write 'mit die Frau', not 'mit der Frau'. "
-    "Preserve hesitations such as äh, ähm, ah, um, uh, and hm, "
-    "as well as repetitions, partial words, false starts, self-corrections, stutters, "
-    "code-switching, discourse markers, and malformed or invented words. "
-    "Do not collapse repeated words or self-corrections into a single fluent phrase. "
-    "Never rewrite the speech into standard, fluent, or grammatically correct German."
+# Settings and the initial prompt live in transcript_processing/whisperx_engine.py
+# (2026-10-11) -- one source of truth shared with the production GPU worker.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from transcript_processing.whisperx_engine import (  # noqa: E402
+    ASR_MODEL, DIARIZATION_MODEL, INITIAL_PROMPT, LANGUAGE, WhisperXTranscriber,
 )
 
 
@@ -146,36 +118,9 @@ def run_batch(
     speaker_hints: dict[str, int],
     only_files: list[str] | None,
 ) -> None:
-    # Imported here, not at module level, so --help and argument parsing
-    # work even on a machine that hasn't installed whisperx/torch/
-    # pyannote yet -- matches this file's own "not run from this sandbox"
-    # reality; a syntax check shouldn't require a GPU environment.
-    import pandas as pd
-    import torch
-    import whisperx
-    from pyannote.audio import Pipeline
-
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from transcript_processing.whisperx_adapter import filter_prompt_leak
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    batch_size = 1
-    compute_type = "float16" if device == "cuda" else "int8"
-
-    asr_options = {"temperatures": [0.0], "initial_prompt": INITIAL_PROMPT}
-
     os.makedirs(output_dir, exist_ok=True)
-
-    print("Loading WhisperX model...")
-    model = whisperx.load_model(ASR_MODEL, device, compute_type=compute_type, asr_options=asr_options)
-
-    print("Loading alignment model...")
-    model_a, metadata = whisperx.load_align_model(language_code=LANGUAGE, device=device)
-
-    print("Loading diarization pipeline...")
-    diarize_model = Pipeline.from_pretrained(DIARIZATION_MODEL, token=hf_token)
-    if device == "cuda":
-        diarize_model.to(torch.device("cuda"))
+    print("Loading WhisperX, alignment and diarization models (once)...")
+    transcriber = WhisperXTranscriber(hf_token)
 
     if only_files:
         audio_files = sorted(only_files)
@@ -188,86 +133,24 @@ def run_batch(
     for i, filename in enumerate(audio_files, start=1):
         audio_path = os.path.join(audio_dir, filename)
         stem = os.path.splitext(filename)[0]
-        header = f"[{i}/{len(audio_files)}] {filename}"
         print("=" * 80)
-        print(header)
+        print(f"[{i}/{len(audio_files)}] {filename}")
         print("=" * 80)
-
         num_speakers = speaker_hints.get(stem, num_speakers_default)
-        if num_speakers is not None:
-            print(f"speaker count hint: {num_speakers}")
-        else:
-            print("speaker count hint: none given -- letting pyannote auto-detect")
+        print(f"speaker count hint: {num_speakers if num_speakers is not None else 'none -- pyannote auto-detects'}")
 
         start_time = time.time()
         try:
-            audio = whisperx.load_audio(audio_path)
-
-            result = model.transcribe(audio, language=LANGUAGE, batch_size=batch_size)
-            print(f"Detected language: {result['language']}")
-
-            result = whisperx.align(
-                result["segments"], model_a, metadata, audio, device,
-                return_char_alignments=False,
-            )
-
-            waveform = torch.from_numpy(audio).unsqueeze(0)
-            diarize_kwargs = {"waveform": waveform, "sample_rate": 16000}
-            call_kwargs = {}
-            if num_speakers is not None:
-                call_kwargs["num_speakers"] = num_speakers
-            diarization_output = diarize_model(diarize_kwargs, **call_kwargs)
-            exclusive = diarization_output.exclusive_speaker_diarization
-
-            rows = []
-            for turn, _, speaker in exclusive.itertracks(yield_label=True):
-                rows.append({"start": float(turn.start), "end": float(turn.end), "speaker": speaker})
-            diarize_segments = pd.DataFrame(rows)
-
-            result = whisperx.assign_word_speakers(diarize_segments, result)
-
-            # Prompt-leak filter -- see module docstring, change 3. Uses
-            # the REAL initial_prompt this run actually used, not the
-            # weaker no-known-prompt fallback whisperx_adapter.py falls
-            # back to when this metadata isn't available.
-            kept_segments, dropped_segments = filter_prompt_leak(
-                result["segments"], known_prompt_leak=INITIAL_PROMPT
-            )
-            if dropped_segments:
-                print(f"Dropped {len(dropped_segments)} prompt-leak segment(s):")
-                for seg in dropped_segments:
-                    print(f"  start={seg.get('start')}  text={seg.get('text')!r}")
-            result["segments"] = kept_segments
-
-            print("\n--- FINAL SEGMENTS ---")
-            for segment in result["segments"]:
-                print(segment)
-
-            result["_meta"] = {
-                "engine": "whisperx",
-                "model": ASR_MODEL,
-                "diarization_model": DIARIZATION_MODEL,
-                "language": LANGUAGE,
-                "compute_type": compute_type,
-                "batch_size": batch_size,
-                "initial_prompt": INITIAL_PROMPT,
-                "num_speakers_hint": num_speakers,
-                "prompt_leak_segments_dropped": len(dropped_segments),
-                "source_audio_filename": filename,
-                "hardened_script_version": "2026-09-20",
-            }
-
+            result = transcriber.transcribe(audio_path, num_speakers=num_speakers)
+            if result["_meta"]["prompt_leak_segments_dropped"]:
+                print(f"Dropped {result['_meta']['prompt_leak_segments_dropped']} prompt-leak segment(s)")
             output_file = os.path.join(output_dir, f"{stem}.json")
             with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
-            print(f"\nSaved to: {output_file}")
-
-            elapsed = time.time() - start_time
-            print(f"\n[{i}/{len(audio_files)}] DONE  ({elapsed:.1f}s)  {filename}\n")
-
+            print(f"Saved to: {output_file}")
+            print(f"\n[{i}/{len(audio_files)}] DONE  ({time.time() - start_time:.1f}s)  {filename}\n")
         except Exception as e:
-            elapsed = time.time() - start_time
-            print(f"\n[{i}/{len(audio_files)}] FAILED after {elapsed:.1f}s  {filename}")
+            print(f"\n[{i}/{len(audio_files)}] FAILED after {time.time() - start_time:.1f}s  {filename}")
             print(f"  {type(e).__name__}: {e}")
             traceback.print_exc()
             print()
