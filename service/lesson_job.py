@@ -20,8 +20,9 @@ Order matches the product, not the old test script: the session exists the
 moment the audio is uploaded, so the UI can show "processing" while the GPU
 works. Any exception marks the session 'failed' and is re-raised.
 
-Not here yet (later steps): Postgres + one transaction per analysis (D4),
-Cloud Storage, users/consent, rate limits.
+An analysis's rows are written in one transaction (D4), on SQLite locally
+or Cloud SQL Postgres in production. Not here yet (later steps): Cloud
+Storage, users/consent, rate limits.
 """
 
 import hashlib
@@ -248,18 +249,21 @@ def analyze_lesson(deps: LessonDeps, *, session_id: str, transcript_id: str, tur
     settings = {"error_method": result["error_method"], "count_unit": result["count_unit"],
                 "chunk_seconds": result["chunk_seconds"], "repetition_run_threshold": REPETITION_RUN_THRESHOLD,
                 "llm_generation_config": deps.llm_settings}
-    deps.repo.create_analysis_run(run_id, session_id, transcript_id, llm_model=deps.llm_model,
-                                  prompt_versions=result["fluenceme_versions"], settings=settings)
-    persist_pipeline_result(deps.repo, session_id, transcript_id, result, id_factory=lambda: deps.ids("id"),
-                            run_id=run_id)
-    report = build_report(result)
-    deps.repo.create_report_snapshot(deps.ids("report"), session_id, json.dumps(report, ensure_ascii=False),
-                                     run_id=run_id, transcript_id=transcript_id)
-    items = deps.repo.list_information_items(session_id, run_id=run_id)
-    export_id = deps.ids("export")
-    uri = deps.blobs.put_bytes(build_report2_xlsx(items), f"exports/{session_id}/{export_id}.xlsx")
-    deps.repo.create_report2_export(export_id, session_id, uri, run_id=run_id, row_count=len(items))
-    deps.repo.update_session(session_id, status="complete", word_count=result["word_count"],
-                             duration_seconds=result["duration_seconds"])
+    # One transaction (D4): a failure anywhere below leaves no half-written run.
+    # The LLM calls above stay outside it, so no connection is held open during them.
+    with deps.repo.transaction():
+        deps.repo.create_analysis_run(run_id, session_id, transcript_id, llm_model=deps.llm_model,
+                                      prompt_versions=result["fluenceme_versions"], settings=settings)
+        persist_pipeline_result(deps.repo, session_id, transcript_id, result, id_factory=lambda: deps.ids("id"),
+                                run_id=run_id)
+        report = build_report(result)
+        deps.repo.create_report_snapshot(deps.ids("report"), session_id, json.dumps(report, ensure_ascii=False),
+                                         run_id=run_id, transcript_id=transcript_id)
+        items = deps.repo.list_information_items(session_id, run_id=run_id)
+        export_id = deps.ids("export")
+        uri = deps.blobs.put_bytes(build_report2_xlsx(items), f"exports/{session_id}/{export_id}.xlsx")
+        deps.repo.create_report2_export(export_id, session_id, uri, run_id=run_id, row_count=len(items))
+        deps.repo.update_session(session_id, status="complete", word_count=result["word_count"],
+                                 duration_seconds=result["duration_seconds"])
     return LessonResult(session_id, "complete", transcript_id=transcript_id, run_id=run_id, report=report,
                         result=result)

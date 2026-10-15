@@ -10,11 +10,10 @@ means and why.
 STORAGE SEAM, same pattern voice_enrollment/voice_enrollment.py already
 uses for VoiceprintRepository -- this is deliberately not a new pattern:
 StorageRepository (ABC) is what pipeline-orchestration code is written
-against; SQLiteStorageRepository is the shipped default (zero extra
-infra, fine at this scale). Swapping in a Postgres implementation later
-means writing one new class against the same abstract interface -- no
-caller of this module needs to change. That's the actual "can easily
-migrate to a cloud/production env" this module was asked to satisfy.
+against. SQLStorageRepository holds every query once; SQLiteStorageRepository
+(local, zero extra infra) and storage/postgres_repo.py's
+PostgresStorageRepository (Cloud SQL, since 2026-10-14) only differ in
+how they connect -- no caller of this module changes between them.
 
 SCOPE, stated explicitly (per Dan's own framing -- "code to produce the
 crucial data entries within the data tables... 6 or 7?"): this covers
@@ -65,7 +64,9 @@ direct_computation.py, speaker_filter.py for the same practice):
 import json
 import sqlite3
 import sys
+import threading
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -270,6 +271,10 @@ class StorageRepository(ABC):
     against this interface -- see module docstring."""
 
     @abstractmethod
+    def transaction(self):
+        """Context manager: every call inside commits together or not at all."""
+
+    @abstractmethod
     def create_session(self, session_id: str, source: str, *, user_id: str | None = None,
                         language_pair: str = "de-en", status: str = "processing") -> None: ...
 
@@ -354,17 +359,315 @@ class StorageRepository(ABC):
     def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
 
 
-class SQLiteStorageRepository(StorageRepository):
-    """Default, zero-extra-infra implementation -- one file, created (and
-    migrated forward via CREATE TABLE IF NOT EXISTS) on first connect,
-    same as SQLiteVoiceprintRepository does for voiceprints.db. Foreign
-    keys are enforced (PRAGMA foreign_keys = ON on every connection) --
-    SQLite doesn't do this by default, and a repo meant to prove real
-    referential shape shouldn't silently allow rows that violate it."""
+class SQLStorageRepository(StorageRepository):
+    """Every query, written once for SQLite and Postgres. A subclass supplies
+    connections (_new_connection) and its placeholder style; the SQL here is
+    written with '?' and translated.
+
+    transaction() groups calls into one commit: inside it every call shares
+    one connection, and an exception rolls all of it back (D4 -- an analysis
+    lands whole or not at all). A call made outside any transaction() is its
+    own transaction. The open connection is per thread, so one repository
+    can serve concurrent API requests."""
+
+    placeholder = "?"
+
+    def __init__(self):
+        self._local = threading.local()
+
+    @abstractmethod
+    def _new_connection(self): ...
+
+    @contextmanager
+    def transaction(self):
+        if getattr(self._local, "conn", None) is not None:
+            yield  # nested: part of the outer transaction
+            return
+        conn = self._new_connection()
+        self._local.conn = conn
+        try:
+            yield
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+        finally:
+            self._local.conn = None
+            conn.close()  # pooled connections go back to the pool
+
+    def _execute(self, sql: str, params=(), *, many: bool = False, fetch: str | None = None):
+        if self.placeholder != "?":
+            sql = sql.replace("?", self.placeholder)
+        with self.transaction():
+            cur = self._local.conn.cursor()
+            try:
+                if many:
+                    cur.executemany(sql, params)
+                else:
+                    cur.execute(sql, params)
+                if fetch is None:
+                    return None
+                cols = [d[0] for d in cur.description]
+                rows = cur.fetchall() if fetch == "all" else cur.fetchmany(1)
+                return [dict(zip(cols, r)) for r in rows]
+            finally:
+                cur.close()
+
+    def _all(self, sql: str, params=()) -> list[dict]:
+        return self._execute(sql, params, fetch="all")
+
+    def _one(self, sql: str, params=()) -> dict | None:
+        rows = self._execute(sql, params, fetch="one")
+        return rows[0] if rows else None
+
+    # --- sessions -----------------------------------------------------
+
+    def create_session(self, session_id, source, *, user_id=None, language_pair="de-en", status="processing") -> None:
+        now = _now()
+        self._execute(
+            """
+            INSERT INTO sessions (session_id, user_id, source, language_pair, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                source = excluded.source, language_pair = excluded.language_pair,
+                status = excluded.status, updated_at = excluded.updated_at
+            """,
+            (session_id, user_id, source, language_pair, status, now, now),
+        )
+
+    def update_session(self, session_id: str, **fields) -> None:
+        if not fields:
+            return
+        fields["updated_at"] = _now()
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        self._execute(f"UPDATE sessions SET {set_clause} WHERE session_id = ?", (*fields.values(), session_id))
+
+    def get_session(self, session_id: str) -> dict | None:
+        return self._one("SELECT * FROM sessions WHERE session_id = ?", (session_id,))
+
+    # --- audio_assets ---------------------------------------------------
+
+    def create_audio_asset(self, audio_id, session_id, storage_uri, format, duration_seconds, *,
+                            size_bytes=None, sha256=None, speaker_count_hint=None) -> None:
+        self._execute(
+            """
+            INSERT INTO audio_assets
+                (audio_id, session_id, storage_uri, format, size_bytes, duration_seconds,
+                 sha256, uploaded_at, speaker_count_hint)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(audio_id) DO UPDATE SET
+                storage_uri = excluded.storage_uri, duration_seconds = excluded.duration_seconds
+            """,
+            (audio_id, session_id, storage_uri, format, size_bytes, duration_seconds,
+             sha256, _now(), speaker_count_hint),
+        )
+
+    # --- transcripts ------------------------------------------------------
+
+    def create_transcript(self, transcript_id, session_id, engine, raw_json_uri, *,
+                           audio_id=None, target_speaker_label=None, speaker_resolution_method=None,
+                           asr_model=None, diarization_model=None, asr_settings=None) -> None:
+        self._execute(
+            """
+            INSERT INTO transcripts
+                (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
+                 asr_settings_json, raw_json_uri, target_speaker_label, speaker_resolution_method, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(transcript_id) DO UPDATE SET
+                target_speaker_label = excluded.target_speaker_label
+            """,
+            (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
+             json.dumps(asr_settings, ensure_ascii=False) if asr_settings is not None else None,
+             raw_json_uri, target_speaker_label, speaker_resolution_method, _now()),
+        )
+
+    def get_audio_asset(self, session_id: str) -> dict | None:
+        return self._one("SELECT * FROM audio_assets WHERE session_id = ? ORDER BY uploaded_at DESC LIMIT 1",
+                         (session_id,))
+
+    def get_transcript(self, transcript_id: str) -> dict | None:
+        return self._one("SELECT * FROM transcripts WHERE transcript_id = ?", (transcript_id,))
+
+    def latest_transcript(self, session_id: str) -> dict | None:
+        return self._one("SELECT * FROM transcripts WHERE session_id = ? ORDER BY created_at DESC LIMIT 1",
+                         (session_id,))
+
+    def set_transcript_speaker(self, transcript_id, target_speaker_label, method) -> None:
+        self._execute("UPDATE transcripts SET target_speaker_label = ?, speaker_resolution_method = ? "
+                      "WHERE transcript_id = ?", (target_speaker_label, method, transcript_id))
+
+    # --- speaker_resolutions --------------------------------------------------
+
+    def create_speaker_resolution(self, resolution_id, session_id, *, user_id, resolved_speaker_label, reason,
+                                   outcome, match_threshold, margin_threshold, candidates) -> None:
+        with self.transaction():
+            self._execute(
+                """
+                INSERT INTO speaker_resolutions
+                    (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
+                     match_threshold_used, margin_threshold_used, resolved_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
+                 match_threshold, margin_threshold, _now()),
+            )
+            if candidates:
+                self._execute(
+                    "INSERT INTO speaker_resolution_candidates (candidate_id, resolution_id, speaker_label, similarity, rank) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    [(cid, resolution_id, label, float(sim), rank) for rank, (cid, label, sim) in enumerate(candidates, 1)],
+                    many=True,
+                )
+
+    def record_manual_speaker_pick(self, resolution_id, speaker_label) -> None:
+        self._execute("UPDATE speaker_resolutions SET resolved_speaker_label = ?, outcome = 'manual_override', "
+                      "resolved_at = ? WHERE resolution_id = ?", (speaker_label, _now(), resolution_id))
+
+    def list_speaker_resolutions(self, session_id: str) -> list[dict]:
+        with self.transaction():
+            out = self._all("SELECT * FROM speaker_resolutions WHERE session_id = ? ORDER BY resolved_at", (session_id,))
+            for d in out:
+                d["candidates"] = self._all(
+                    "SELECT speaker_label, similarity, rank FROM speaker_resolution_candidates "
+                    "WHERE resolution_id = ? ORDER BY rank", (d["resolution_id"],))
+        return out
+
+    # --- analysis_runs --------------------------------------------------------
+
+    def create_analysis_run(self, run_id, session_id, transcript_id, *, llm_model, prompt_versions, settings) -> None:
+        self._execute(
+            """
+            INSERT INTO analysis_runs
+                (run_id, session_id, transcript_id, llm_model, prompt_versions_json, settings_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (run_id, session_id, transcript_id, llm_model,
+             json.dumps(prompt_versions, sort_keys=True), json.dumps(settings, sort_keys=True), _now()),
+        )
+
+    # --- taxonomy (lookup tables) ------------------------------------------
+
+    def ensure_taxonomy_seeded(self) -> None:
+        with self.transaction():
+            self._execute("INSERT INTO constructs (construct_key, display_name) VALUES (?, ?) "
+                          "ON CONFLICT DO NOTHING", _CONSTRUCTS, many=True)
+            self._execute(
+                """
+                INSERT INTO linguistic_features
+                    (feature_key, construct_key, display_name, computation_path, description)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT DO NOTHING
+                """,
+                [(feature_key, construct_key, feature_key, computation_path,
+                  "Phase 1 placeholder taxonomy -- see storage.py module docstring.")
+                 for feature_key, construct_key, computation_path, *_ in PHASE1_TAXONOMY],
+                many=True,
+            )
+            self._execute(
+                "INSERT INTO metric_definitions (metric_key, feature_key, unit, formula) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT DO NOTHING",
+                [(metric_key, feature_key, unit, formula)
+                 for feature_key, _, _, metric_key, unit, formula in PHASE1_TAXONOMY],
+                many=True,
+            )
+
+    # --- information_items --------------------------------------------------
+
+    def write_information_item(self, item_id, session_id, feature_key, input_ref, output, *,
+                                run_id, transcript_id=None, utterance_ref=None, review_status="unreviewed",
+                                gravity=None) -> None:
+        self._execute(
+            """
+            INSERT INTO information_items
+                (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
+                 input_ref, output_json, review_status, gravity, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO NOTHING
+            """,
+            (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
+             input_ref, json.dumps(output, ensure_ascii=False), review_status, gravity, _now()),
+        )
+
+    # --- correction_checks ----------------------------------------------------
+
+    def write_correction_check(self, check_id, item_id, session_id, check_type, passed, *,
+                                run_id, detail=None) -> None:
+        self._execute(
+            """
+            INSERT INTO correction_checks
+                (check_id, item_id, session_id, run_id, check_type, passed, detail, checked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (check_id, item_id, session_id, run_id, check_type, bool(passed), detail, _now()),
+        )
+
+    def _list(self, table: str, session_id: str, run_id: str | None, order_by: str) -> list[dict]:
+        query, params = f"SELECT * FROM {table} WHERE session_id = ?", (session_id,)
+        if run_id is not None:
+            query, params = query + " AND run_id = ?", params + (run_id,)
+        return self._all(f"{query} ORDER BY {order_by}", params)
+
+    def list_correction_checks(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        return self._list("correction_checks", session_id, run_id, "item_id, check_type")
+
+    def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        return self._list("information_items", session_id, run_id, "created_at")
+
+    # --- metric_values -----------------------------------------------------
+
+    def write_metric_value(self, value_id, session_id, metric_key, value, *, run_id, transcript_id=None) -> None:
+        self._execute(
+            """
+            INSERT INTO metric_values (value_id, session_id, transcript_id, run_id, metric_key, value, computed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,  # plain INSERT: re-analysis is a new run_id, so a repeat (run_id, metric_key) is a bug -- fail loudly
+            (value_id, session_id, transcript_id, run_id, metric_key, value, _now()),
+        )
+
+    def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]:
+        return self._list("metric_values", session_id, run_id, "metric_key")
+
+    # --- report2_exports -----------------------------------------------------
+
+    def create_report2_export(self, export_id, session_id, storage_uri, *, run_id, format="xlsx", row_count=None) -> None:
+        self._execute(
+            """
+            INSERT INTO report2_exports (export_id, session_id, run_id, storage_uri, format, row_count, generated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(export_id) DO UPDATE SET
+                storage_uri = excluded.storage_uri, row_count = excluded.row_count, generated_at = excluded.generated_at
+            """,
+            (export_id, session_id, run_id, storage_uri, format, row_count, _now()),
+        )
+
+    # --- report_snapshots -----------------------------------------------------
+
+    def create_report_snapshot(self, report_id, session_id, payload_json, *, run_id, transcript_id=None) -> None:
+        self._execute(
+            """
+            INSERT INTO report_snapshots (report_id, session_id, transcript_id, run_id, payload_json, generated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                report_id = excluded.report_id, payload_json = excluded.payload_json,
+                generated_at = excluded.generated_at
+            """,
+            (report_id, session_id, transcript_id, run_id, payload_json, _now()),
+        )
+
+
+class SQLiteStorageRepository(SQLStorageRepository):
+    """Local implementation -- one file, created (and migrated forward via
+    CREATE TABLE IF NOT EXISTS) on first connect, same as
+    SQLiteVoiceprintRepository does for voiceprints.db. Foreign keys are
+    enforced (PRAGMA foreign_keys = ON on every connection) -- SQLite
+    doesn't do this by default, and a repo meant to prove real referential
+    shape shouldn't silently allow rows that violate it."""
 
     def __init__(self, db_path: str | Path):
+        super().__init__()
         self.db_path = str(db_path)
-        with self._connect() as conn:
+        conn = self._new_connection()
+        try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(information_items)")]
             if cols and "run_id" not in cols:
                 # CREATE TABLE IF NOT EXISTS can't add columns or change the
@@ -378,286 +681,14 @@ class SQLiteStorageRepository(StorageRepository):
                 # v1.3 -> v1.4 is additive: a nullable column and a new table.
                 conn.execute("ALTER TABLE information_items ADD COLUMN gravity INTEGER")
             conn.executescript(DDL)
+            conn.commit()
+        finally:
+            conn.close()
 
-    def _connect(self) -> sqlite3.Connection:
+    def _new_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.execute("PRAGMA foreign_keys = ON")
-        conn.row_factory = sqlite3.Row
         return conn
-
-    # --- sessions -----------------------------------------------------
-
-    def create_session(self, session_id, source, *, user_id=None, language_pair="de-en", status="processing") -> None:
-        now = _now()
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO sessions (session_id, user_id, source, language_pair, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(session_id) DO UPDATE SET
-                    source = excluded.source, language_pair = excluded.language_pair,
-                    status = excluded.status, updated_at = excluded.updated_at
-                """,
-                (session_id, user_id, source, language_pair, status, now, now),
-            )
-
-    def update_session(self, session_id: str, **fields) -> None:
-        if not fields:
-            return
-        fields["updated_at"] = _now()
-        set_clause = ", ".join(f"{k} = ?" for k in fields)
-        with self._connect() as conn:
-            conn.execute(
-                f"UPDATE sessions SET {set_clause} WHERE session_id = ?",
-                (*fields.values(), session_id),
-            )
-
-    def get_session(self, session_id: str) -> dict | None:
-        with self._connect() as conn:
-            row = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
-        return dict(row) if row else None
-
-    # --- audio_assets ---------------------------------------------------
-
-    def create_audio_asset(self, audio_id, session_id, storage_uri, format, duration_seconds, *,
-                            size_bytes=None, sha256=None, speaker_count_hint=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO audio_assets
-                    (audio_id, session_id, storage_uri, format, size_bytes, duration_seconds,
-                     sha256, uploaded_at, speaker_count_hint)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(audio_id) DO UPDATE SET
-                    storage_uri = excluded.storage_uri, duration_seconds = excluded.duration_seconds
-                """,
-                (audio_id, session_id, storage_uri, format, size_bytes, duration_seconds,
-                 sha256, _now(), speaker_count_hint),
-            )
-
-    # --- transcripts ------------------------------------------------------
-
-    def create_transcript(self, transcript_id, session_id, engine, raw_json_uri, *,
-                           audio_id=None, target_speaker_label=None, speaker_resolution_method=None,
-                           asr_model=None, diarization_model=None, asr_settings=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO transcripts
-                    (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
-                     asr_settings_json, raw_json_uri, target_speaker_label, speaker_resolution_method, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(transcript_id) DO UPDATE SET
-                    target_speaker_label = excluded.target_speaker_label
-                """,
-                (transcript_id, session_id, audio_id, engine, asr_model, diarization_model,
-                 json.dumps(asr_settings, ensure_ascii=False) if asr_settings is not None else None,
-                 raw_json_uri, target_speaker_label, speaker_resolution_method, _now()),
-            )
-
-    def get_audio_asset(self, session_id: str) -> dict | None:
-        with self._connect() as conn:
-            row = conn.execute("SELECT * FROM audio_assets WHERE session_id = ? ORDER BY uploaded_at DESC LIMIT 1",
-                               (session_id,)).fetchone()
-        return dict(row) if row else None
-
-    def get_transcript(self, transcript_id: str) -> dict | None:
-        with self._connect() as conn:
-            row = conn.execute("SELECT * FROM transcripts WHERE transcript_id = ?", (transcript_id,)).fetchone()
-        return dict(row) if row else None
-
-    def latest_transcript(self, session_id: str) -> dict | None:
-        with self._connect() as conn:
-            row = conn.execute("SELECT * FROM transcripts WHERE session_id = ? ORDER BY created_at DESC LIMIT 1",
-                               (session_id,)).fetchone()
-        return dict(row) if row else None
-
-    def set_transcript_speaker(self, transcript_id, target_speaker_label, method) -> None:
-        with self._connect() as conn:
-            conn.execute("UPDATE transcripts SET target_speaker_label = ?, speaker_resolution_method = ? "
-                         "WHERE transcript_id = ?", (target_speaker_label, method, transcript_id))
-
-    # --- speaker_resolutions --------------------------------------------------
-
-    def create_speaker_resolution(self, resolution_id, session_id, *, user_id, resolved_speaker_label, reason,
-                                   outcome, match_threshold, margin_threshold, candidates) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO speaker_resolutions
-                    (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
-                     match_threshold_used, margin_threshold_used, resolved_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (resolution_id, session_id, user_id, resolved_speaker_label, reason, outcome,
-                 match_threshold, margin_threshold, _now()),
-            )
-            conn.executemany(
-                "INSERT INTO speaker_resolution_candidates (candidate_id, resolution_id, speaker_label, similarity, rank) "
-                "VALUES (?, ?, ?, ?, ?)",
-                [(cid, resolution_id, label, float(sim), rank) for rank, (cid, label, sim) in enumerate(candidates, 1)],
-            )
-
-    def record_manual_speaker_pick(self, resolution_id, speaker_label) -> None:
-        with self._connect() as conn:
-            conn.execute("UPDATE speaker_resolutions SET resolved_speaker_label = ?, outcome = 'manual_override', "
-                         "resolved_at = ? WHERE resolution_id = ?", (speaker_label, _now(), resolution_id))
-
-    def list_speaker_resolutions(self, session_id: str) -> list[dict]:
-        with self._connect() as conn:
-            rows = conn.execute("SELECT * FROM speaker_resolutions WHERE session_id = ? ORDER BY resolved_at",
-                                (session_id,)).fetchall()
-            out = []
-            for r in rows:
-                d = dict(r)
-                d["candidates"] = [dict(c) for c in conn.execute(
-                    "SELECT speaker_label, similarity, rank FROM speaker_resolution_candidates "
-                    "WHERE resolution_id = ? ORDER BY rank", (d["resolution_id"],)).fetchall()]
-                out.append(d)
-        return out
-
-    # --- analysis_runs --------------------------------------------------------
-
-    def create_analysis_run(self, run_id, session_id, transcript_id, *, llm_model, prompt_versions, settings) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO analysis_runs
-                    (run_id, session_id, transcript_id, llm_model, prompt_versions_json, settings_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (run_id, session_id, transcript_id, llm_model,
-                 json.dumps(prompt_versions, sort_keys=True), json.dumps(settings, sort_keys=True), _now()),
-            )
-
-    # --- taxonomy (lookup tables) ------------------------------------------
-
-    def ensure_taxonomy_seeded(self) -> None:
-        with self._connect() as conn:
-            conn.executemany(
-                "INSERT OR IGNORE INTO constructs (construct_key, display_name) VALUES (?, ?)",
-                _CONSTRUCTS,
-            )
-            for feature_key, construct_key, computation_path, metric_key, unit, formula in PHASE1_TAXONOMY:
-                conn.execute(
-                    """
-                    INSERT OR IGNORE INTO linguistic_features
-                        (feature_key, construct_key, display_name, computation_path, description)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (feature_key, construct_key, feature_key, computation_path,
-                     "Phase 1 placeholder taxonomy -- see storage.py module docstring."),
-                )
-                conn.execute(
-                    """
-                    INSERT OR IGNORE INTO metric_definitions (metric_key, feature_key, unit, formula)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (metric_key, feature_key, unit, formula),
-                )
-
-    # --- information_items --------------------------------------------------
-
-    def write_information_item(self, item_id, session_id, feature_key, input_ref, output, *,
-                                run_id, transcript_id=None, utterance_ref=None, review_status="unreviewed",
-                                gravity=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO information_items
-                    (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
-                     input_ref, output_json, review_status, gravity, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(item_id) DO NOTHING
-                """,
-                (item_id, session_id, transcript_id, run_id, feature_key, utterance_ref,
-                 input_ref, json.dumps(output, ensure_ascii=False), review_status, gravity, _now()),
-            )
-
-    # --- correction_checks ----------------------------------------------------
-
-    def write_correction_check(self, check_id, item_id, session_id, check_type, passed, *,
-                                run_id, detail=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO correction_checks
-                    (check_id, item_id, session_id, run_id, check_type, passed, detail, checked_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (check_id, item_id, session_id, run_id, check_type, bool(passed), detail, _now()),
-            )
-
-    def list_correction_checks(self, session_id: str, run_id: str | None = None) -> list[dict]:
-        query = "SELECT * FROM correction_checks WHERE session_id = ?"
-        params: tuple = (session_id,)
-        if run_id is not None:
-            query += " AND run_id = ?"
-            params += (run_id,)
-        with self._connect() as conn:
-            rows = conn.execute(query + " ORDER BY item_id, check_type", params).fetchall()
-        return [dict(r) for r in rows]
-
-    def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]:
-        query = "SELECT * FROM information_items WHERE session_id = ?"
-        params: tuple = (session_id,)
-        if run_id is not None:
-            query += " AND run_id = ?"
-            params += (run_id,)
-        with self._connect() as conn:
-            rows = conn.execute(query + " ORDER BY created_at", params).fetchall()
-        return [dict(r) for r in rows]
-
-    # --- metric_values -----------------------------------------------------
-
-    def write_metric_value(self, value_id, session_id, metric_key, value, *, run_id, transcript_id=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO metric_values (value_id, session_id, transcript_id, run_id, metric_key, value, computed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,  # plain INSERT: re-analysis is a new run_id, so a repeat (run_id, metric_key) is a bug -- fail loudly
-                (value_id, session_id, transcript_id, run_id, metric_key, value, _now()),
-            )
-
-    def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]:
-        query = "SELECT * FROM metric_values WHERE session_id = ?"
-        params: tuple = (session_id,)
-        if run_id is not None:
-            query += " AND run_id = ?"
-            params += (run_id,)
-        with self._connect() as conn:
-            rows = conn.execute(query + " ORDER BY metric_key", params).fetchall()
-        return [dict(r) for r in rows]
-
-    # --- report2_exports -----------------------------------------------------
-
-    def create_report2_export(self, export_id, session_id, storage_uri, *, run_id, format="xlsx", row_count=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO report2_exports (export_id, session_id, run_id, storage_uri, format, row_count, generated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(export_id) DO UPDATE SET
-                    storage_uri = excluded.storage_uri, row_count = excluded.row_count, generated_at = excluded.generated_at
-                """,
-                (export_id, session_id, run_id, storage_uri, format, row_count, _now()),
-            )
-
-    # --- report_snapshots -----------------------------------------------------
-
-    def create_report_snapshot(self, report_id, session_id, payload_json, *, run_id, transcript_id=None) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO report_snapshots (report_id, session_id, transcript_id, run_id, payload_json, generated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(run_id) DO UPDATE SET
-                    report_id = excluded.report_id, payload_json = excluded.payload_json,
-                    generated_at = excluded.generated_at
-                """,
-                (report_id, session_id, transcript_id, run_id, payload_json, _now()),
-            )
 
 
 def is_flagged(feature_key: str, entry: dict) -> bool:

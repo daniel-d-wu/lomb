@@ -7,15 +7,18 @@ take, with no GPU, no network and no API key:
                               then resume_with_speaker() -> complete
   C. re-analysis           -> a second analysis_run on the SAME session
   D. a failure mid-job     -> session marked 'failed'
+  E. a failure while saving -> the whole analysis rolls back (D4)
 
 Uses a tiny synthetic WhisperX transcript, the pipeline's FakeProvider, a
-fake speaker-resolution service, and SQLite + a local folder as storage.
+fake speaker-resolution service, and a local folder for files. The database
+is a temporary SQLite file, or with --cloudsql the real Cloud SQL Postgres
+(its lomb_test database), logged in as the given Google account.
 
-Run from lomb_prompts/:  python tests/test_lesson_job.py
+Run from lomb_prompts/:  python tests/test_lesson_job.py [--cloudsql EMAIL]
 """
 
+import argparse
 import shutil
-import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -77,8 +80,14 @@ class BrokenProvider(FakeProvider):
         raise RuntimeError("simulated OpenAI outage")
 
 
-def counts(db: Path, session_id: str) -> dict:
-    con = sqlite3.connect(db)
+class ExportFailsBlobStore(LocalBlobStore):
+    def put_bytes(self, data, key):
+        if key.startswith("exports/"):
+            raise OSError("simulated storage outage")
+        return super().put_bytes(data, key)
+
+
+def counts(repo, session_id: str) -> dict:
     q = {
         "sessions": "SELECT COUNT(*) FROM sessions WHERE session_id = ?",
         "audio_assets": "SELECT COUNT(*) FROM audio_assets WHERE session_id = ?",
@@ -93,19 +102,40 @@ def counts(db: Path, session_id: str) -> dict:
         "report_snapshots": "SELECT COUNT(*) FROM report_snapshots WHERE session_id = ?",
         "report2_exports": "SELECT COUNT(*) FROM report2_exports WHERE session_id = ?",
     }
-    out = {k: con.execute(sql, (session_id,)).fetchone()[0] for k, sql in q.items()}
-    con.close()
-    return out
+    return {k: next(iter(repo._one(sql, (session_id,)).values())) for k, sql in q.items()}
+
+
+def make_repo(args, tmp: Path):
+    if not args.cloudsql:
+        return SQLiteStorageRepository(tmp / "lomb.sqlite")
+    from storage.postgres_repo import PostgresStorageRepository, cloud_sql_connect
+    credentials = None
+    if args.token_env:  # a short-lived `gcloud auth print-access-token`, when ADC isn't set up
+        import datetime
+        import os
+        from google.oauth2.credentials import Credentials
+
+        class TokenOnly(Credentials):  # the connector refreshes before login; a bare token can't, and needn't
+            def refresh(self, request):
+                pass
+
+        expiry = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(minutes=50)
+        credentials = TokenOnly(os.environ[args.token_env], expiry=expiry)
+    return PostgresStorageRepository(cloud_sql_connect(args.cloudsql, "lomb_test", credentials=credentials))
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cloudsql", metavar="EMAIL", help="Run against Cloud SQL (lomb_test) as this IAM user.")
+    parser.add_argument("--token-env", help="Env var holding an access token to log in with (else ADC).")
+    args = parser.parse_args()
     # Speaker-audio slicing needs real audio + ffmpeg; the fake service ignores it anyway.
     audio_decode.extract_speaker_audio = lambda path, turns, **kw: {
         t.speaker_id: np.zeros(16000 * 5, dtype=np.float32) for t in turns}
     tmp = Path(tempfile.mkdtemp())
     try:
-        db = tmp / "lomb.sqlite"
-        repo = SQLiteStorageRepository(db)
+        repo = make_repo(args, tmp)
+        print(f"database: {type(repo).__name__}")
         blobs = LocalBlobStore(tmp / "blobs")
         audio = tmp / "lesson.m4a"
         audio.write_bytes(b"not really audio")
@@ -122,7 +152,7 @@ def main() -> int:
         sid = submit_lesson(d, audio_path=audio, user_id="1")
         assert repo.get_session(sid)["status"] == "processing"
         out = process_lesson(d, session_id=sid, user_id="1")
-        c = counts(db, sid)
+        c = counts(repo, sid)
         print(f"  status={out.status}  {c}")
         assert out.status == "complete" and repo.get_session(sid)["status"] == "complete"
         assert c["speaker_resolutions"] == 1 and c["speaker_resolution_candidates"] == 2
@@ -141,7 +171,7 @@ def main() -> int:
         print(f"  status={out.status}  candidates={[(x['speaker_label'], x['similarity']) for x in out.candidates]}")
         assert out.status == "awaiting_speaker_selection" == repo.get_session(sid_b)["status"]
         assert out.candidates[0]["preview_text"].startswith("Ich wohne"), out.candidates[0]
-        assert counts(db, sid_b)["analysis_runs"] == 0, "nothing analysed before the user picks"
+        assert counts(repo, sid_b)["analysis_runs"] == 0, "nothing analysed before the user picks"
         out = resume_with_speaker(d, session_id=sid_b, speaker_label="SPEAKER_00")
         res = repo.list_speaker_resolutions(sid_b)[0]
         print(f"  after pick: status={out.status}  resolution={res['outcome']} -> {res['resolved_speaker_label']}")
@@ -155,7 +185,7 @@ def main() -> int:
         turns, _ = _turns(_json.loads(Path(t["raw_json_uri"]).read_text(encoding="utf-8")))
         analyze_lesson(deps(), session_id=sid, transcript_id=t["transcript_id"], turns=turns,
                        target_speaker="SPEAKER_00")
-        c = counts(db, sid)
+        c = counts(repo, sid)
         print(f"  {c['analysis_runs']} runs, {c['metric_values']} metric values, {c['report_snapshots']} reports")
         assert c["analysis_runs"] == 2 and c["metric_values"] == 2 * n_metrics and c["sessions"] == 1
 
@@ -169,6 +199,22 @@ def main() -> int:
             assert "simulated OpenAI outage" in str(e)
         print(f"  status={repo.get_session(sid_d)['status']}")
         assert repo.get_session(sid_d)["status"] == "failed"
+
+        print("--- E. failure while saving -> nothing half-written ---")
+        d = deps()
+        d.blobs = ExportFailsBlobStore(tmp / "blobs")
+        sid_e = submit_lesson(d, audio_path=audio, user_id="1")
+        try:
+            process_lesson(d, session_id=sid_e, user_id="1")
+            raise AssertionError("expected the simulated storage outage to raise")
+        except OSError as e:
+            assert "simulated storage outage" in str(e)
+        c = counts(repo, sid_e)
+        print(f"  status={repo.get_session(sid_e)['status']}  {c}")
+        assert repo.get_session(sid_e)["status"] == "failed"
+        assert c["transcripts"] == 1 and c["speaker_resolutions"] == 1, "work before the analysis is kept"
+        for table in ("analysis_runs", "information_items", "correction_checks", "metric_values", "report_snapshots"):
+            assert c[table] == 0, f"{table} should have rolled back"
 
         print("\nAll lesson-job checks passed.")
         return 0
