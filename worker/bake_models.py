@@ -20,7 +20,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import nltk  # noqa: E402
 
 from transcript_processing.whisperx_engine import WhisperXTranscriber  # noqa: E402
+from voice_enrollment.speechbrain_embedder import EcapaSpeakerEmbedder  # noqa: E402
 
 nltk.download("punkt_tab", download_dir=os.environ["NLTK_DATA"], quiet=True)  # used by whisperx alignment
 WhisperXTranscriber(os.environ["HF_TOKEN"].strip(), device="cpu")
+EcapaSpeakerEmbedder()  # voiceprints (saved to LOMB_ECAPA_DIR)
 print("models baked")

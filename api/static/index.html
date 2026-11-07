@@ -19,8 +19,11 @@
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
-  header p { margin: 4px 0 24px; color: var(--muted); }
+  header .who { font-size: 14px; color: var(--muted); }
+  header .who a { color: var(--accent); cursor: pointer; margin-left: 8px; }
+  .tagline { margin: 4px 0 24px; color: var(--muted); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
   .card h2 { margin: 0 0 12px; font-size: 18px; }
   .drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 32px 16px; text-align: center;
@@ -28,14 +31,20 @@
   .drop.over, .drop:hover { border-color: var(--accent); background: var(--soft); }
   .drop strong { color: var(--ink); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
-  select, button { font: inherit; }
-  select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  select, button, input[type=text] { font: inherit; }
+  select, input[type=text] { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  input[type=text] { width: 100%; max-width: 320px; }
   button { padding: 10px 18px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink);
            cursor: pointer; font-weight: 600; }
   button:disabled { opacity: 0.5; cursor: default; }
   button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button.danger { background: transparent; color: var(--bad); border: 1px solid var(--line); }
+  button.small { padding: 4px 10px; font-size: 14px; font-weight: 500; }
+  label.check { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; }
+  label.check input { margin-top: 5px; }
   .muted { color: var(--muted); font-size: 14px; }
   .error { color: var(--bad); }
+  a { color: var(--accent); }
   ol.steps { list-style: none; padding: 0; margin: 0; }
   ol.steps li { padding: 8px 0 8px 32px; position: relative; color: var(--muted); }
   ol.steps li::before { content: ""; position: absolute; left: 4px; top: 13px; width: 12px; height: 12px;
@@ -50,6 +59,10 @@
   .speaker { border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 12px; }
   .speaker .meta { color: var(--muted); font-size: 14px; }
   .speaker blockquote { margin: 8px 0 12px; padding-left: 12px; border-left: 3px solid var(--line); font-style: italic; }
+  .release { background: var(--soft); border-radius: 10px; padding: 12px 16px; font-size: 14px; max-height: 260px; overflow: auto; }
+  table.lessons { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.lessons td { padding: 8px 4px; border-top: 1px solid var(--line); }
+  table.lessons td:last-child { text-align: right; white-space: nowrap; }
   iframe { width: 100%; border: 0; min-height: 600px; background: #fff; border-radius: 8px; }
   [hidden] { display: none !important; }
 </style>
@@ -58,93 +71,286 @@
 <main>
   <header>
     <h1>Lomb</h1>
-    <p>Upload a recorded German lesson. Lomb finds your mistakes and shows you how to fix them.</p>
+    <span class="who" id="who" hidden><span id="whoEmail"></span><a id="accountLink">Account</a><a id="signOutLink">Sign out</a></span>
   </header>
+  <p class="tagline">Upload a recorded German lesson. Lomb finds your mistakes and shows you how to fix them.</p>
 
-  <section class="card" id="upload">
-    <h2>1 · Your recording</h2>
-    <label class="drop" id="drop">
-      <input type="file" id="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.flac,.aac,.mp4" hidden>
-      <strong>Choose an audio file</strong> or drop it here<br>
-      <span class="muted">m4a, mp3, wav, webm … up to 300 MB</span>
-    </label>
-    <p id="chosen" class="muted" hidden></p>
-    <div class="row">
-      <label for="speakers">People talking:</label>
-      <select id="speakers">
-        <option value="">Not sure</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
-      <button id="start" disabled>Analyze</button>
-    </div>
-    <p id="uploadError" class="error" hidden></p>
+  <!-- signed out -->
+  <section class="card" id="signin" hidden>
+    <h2>Sign in</h2>
+    <p>Lomb is invite-only for now. Sign in with the Google account you were invited with.</p>
+    <button id="signInBtn">Sign in with Google</button>
+    <p id="signinError" class="error" hidden></p>
   </section>
 
-  <section class="card" id="progress" hidden>
-    <h2>2 · Working on it</h2>
-    <ol class="steps">
-      <li data-step="upload">Uploading<div class="bar"><div id="uploadBar"></div></div></li>
-      <li data-step="transcribing">Transcribing and separating voices</li>
-      <li data-step="awaiting_speaker_selection">Choosing your voice</li>
-      <li data-step="analyzing">Finding mistakes and checking corrections</li>
-      <li data-step="complete">Report ready</li>
-    </ol>
-    <p class="muted" id="elapsed"></p>
+  <section class="card" id="notInvited" hidden>
+    <h2>Not on the list yet</h2>
+    <p><span id="notInvitedEmail"></span> hasn't been invited. Lomb is invite-only while it's a demo; ask the person
+    who told you about it to add this email.</p>
+    <button class="ghost" onclick="signOutNow()">Use a different account</button>
   </section>
 
-  <section class="card" id="picker" hidden>
-    <h2>Which one is you?</h2>
-    <p class="muted">Lomb heard these voices. Pick yours so it only analyzes what you said.</p>
-    <div id="speakerList"></div>
+  <!-- first sign-in: terms -->
+  <section class="card" id="consent" hidden>
+    <h2>Before you start</h2>
+    <p class="muted">Please read the <a href="/privacy" target="_blank">privacy policy</a>. In short: your recordings,
+    transcripts and results are stored until you delete them; transcription runs on Lomb's servers on Google Cloud;
+    the text of what you said is sent to OpenAI to find errors.</p>
+    <label class="check"><input type="checkbox" id="cTerms"> <span>I agree to the privacy policy.</span></label>
+    <label class="check"><input type="checkbox" id="cRecording"> <span>Everyone audible in recordings I upload has
+      agreed to being recorded and to the recording being analyzed by Lomb.</span></label>
+    <button id="consentBtn" disabled>Continue</button>
   </section>
 
-  <section class="card" id="failed" hidden>
-    <h2 class="error">Something went wrong</h2>
-    <p>This lesson couldn't be analyzed. Try again, or try a different recording.</p>
-    <button class="ghost" onclick="startOver()">Start over</button>
-  </section>
+  <!-- the app -->
+  <div id="app" hidden>
+    <section class="card" id="upload">
+      <h2>Analyze a lesson</h2>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.flac,.aac,.mp4" hidden>
+        <strong>Choose an audio file</strong> or drop it here<br>
+        <span class="muted" id="limitsNote">m4a, mp3, wav, webm …</span>
+      </label>
+      <p id="chosen" class="muted" hidden></p>
+      <div class="row">
+        <label for="speakers">People talking:</label>
+        <select id="speakers">
+          <option value="">Not sure</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+        <button id="start" disabled>Analyze</button>
+      </div>
+      <p id="uploadError" class="error" hidden></p>
+    </section>
 
-  <section id="result" hidden>
-    <div class="row" style="margin: 0 0 12px;">
-      <a id="report2" href="#"><button class="ghost">Download the full error list (.xlsx)</button></a>
-      <button class="ghost" onclick="startOver()">Analyze another lesson</button>
-    </div>
-    <iframe id="report" title="Your report"></iframe>
-  </section>
+    <section class="card" id="progress" hidden>
+      <h2>Working on it</h2>
+      <ol class="steps">
+        <li data-step="upload">Uploading<div class="bar"><div id="uploadBar"></div></div></li>
+        <li data-step="transcribing">Transcribing and separating voices</li>
+        <li data-step="awaiting_speaker_selection">Choosing your voice</li>
+        <li data-step="analyzing">Finding mistakes and checking corrections</li>
+        <li data-step="complete">Report ready</li>
+      </ol>
+      <p class="muted" id="elapsed"></p>
+    </section>
+
+    <section class="card" id="picker" hidden>
+      <h2>Which one is you?</h2>
+      <p class="muted">Lomb heard these voices. Pick yours so it only analyzes what you said.</p>
+      <div id="speakerList"></div>
+    </section>
+
+    <section class="card" id="voiceOffer" hidden>
+      <h2>Skip this step next time?</h2>
+      <p>Lomb can remember your voice and pick you out automatically in future lessons. This creates a voiceprint,
+      which is biometric data, so it's off unless you sign for it. You can turn it off any time.</p>
+      <div class="row">
+        <button onclick="openBiometric(true)">Tell me more</button>
+        <button class="ghost" onclick="dismissVoiceOffer()">No thanks</button>
+      </div>
+    </section>
+
+    <section class="card" id="biometric" hidden>
+      <h2>Voice recognition: written release</h2>
+      <div class="release">
+        <p><strong>What Lomb will create:</strong> a voiceprint, a list of numbers computed from your voice that
+        describes how it sounds. It's a biometric identifier under laws such as Illinois' Biometric Information
+        Privacy Act.</p>
+        <p><strong>Purpose:</strong> only to recognize which voice in your future uploads is yours. Nothing else.</p>
+        <p><strong>How:</strong> from the voice you picked as yours, refined each time you confirm your voice again.
+        Other people's voices are compared with it but nothing about them is stored except similarity scores.</p>
+        <p><strong>Sharing:</strong> never sold, leased, traded or otherwise profited from; not disclosed except to
+        Google Cloud, which hosts it, or where required by law.</p>
+        <p><strong>Retention:</strong> permanently destroyed when you turn voice recognition off, when you delete
+        your account, or one year after it was last used, whichever comes first, and in any case within three
+        years of your last interaction with Lomb. Full details in the <a href="/privacy#voiceprints"
+        target="_blank">privacy policy</a>.</p>
+      </div>
+      <label class="check"><input type="checkbox" id="bioAgree"> <span>I have read the above and consent to Lomb
+        collecting, storing and using my voiceprint as described.</span></label>
+      <p><label for="bioName">Type your full name to sign:</label><br><input type="text" id="bioName" autocomplete="name"></p>
+      <div class="row">
+        <button id="bioSign" disabled>Sign and turn on</button>
+        <button class="ghost" onclick="closeBiometric()">Cancel</button>
+      </div>
+      <p id="bioError" class="error" hidden></p>
+    </section>
+
+    <section class="card" id="failed" hidden>
+      <h2 class="error">Something went wrong</h2>
+      <p>This lesson couldn't be analyzed. Try again, or try a different recording.</p>
+      <button class="ghost" onclick="backHome()">Back</button>
+    </section>
+
+    <section id="result" hidden>
+      <p class="muted" id="autoNote" hidden>Lomb recognized your voice automatically.</p>
+      <div class="row" style="margin: 0 0 12px;">
+        <button class="ghost" id="report2Btn">Download the full error list (.xlsx)</button>
+        <button class="ghost" onclick="backHome()">Back to my lessons</button>
+      </div>
+      <iframe id="report" title="Your report"></iframe>
+    </section>
+
+    <section class="card" id="lessons">
+      <h2>Your lessons</h2>
+      <p class="muted" id="noLessons">None yet.</p>
+      <table class="lessons"><tbody id="lessonRows"></tbody></table>
+    </section>
+
+    <section class="card" id="account" hidden>
+      <h2>Account</h2>
+      <p><strong>Voice recognition:</strong> <span id="voiceStatus"></span></p>
+      <div class="row" style="margin-top: 0;">
+        <button class="ghost small" id="voiceOn" onclick="openBiometric(false)">Turn on</button>
+        <button class="danger small" id="voiceOff">Turn off and delete my voiceprint</button>
+      </div>
+      <p style="margin-top: 20px;"><strong>Delete my account</strong><br>
+      <span class="muted">Deletes every lesson (recordings, transcripts, reports), your voiceprint and your consent
+      records. This can't be undone.</span></p>
+      <button class="danger small" id="deleteAccount">Delete my account</button>
+      <p class="muted" style="margin-top: 20px;"><a href="/privacy" target="_blank">Privacy policy</a></p>
+    </section>
+  </div>
 </main>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
 const $ = (id) => document.getElementById(id);
+const show = (id, on = true) => { $(id).hidden = !on; };
 const ORDER = ["upload", "transcribing", "awaiting_speaker_selection", "analyzing", "complete"];
-let file = null, sessionId = null, pollTimer = null, startedAt = null;
+const SCREENS = ["signin", "notInvited", "consent", "app"];
+let auth, me = null, file = null, sessionId = null, pollTimer = null, startedAt = null, enrollFrom = null;
+
+function screen(id) { SCREENS.forEach((s) => show(s, s === id)); show("who", id !== "signin"); }
 
 async function api(path, options = {}) {
-  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-  return body;
+  const token = await auth.currentUser.getIdToken();
+  const res = await fetch(path, { ...options,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`);
+    err.status = res.status; err.code = body.detail && body.detail.code;
+    throw err;
+  }
+  return res;
+}
+const apiJson = async (path, options) => (await api(path, options)).json();
+
+// --- start up -------------------------------------------------------------------
+const config = await (await fetch("/api/config")).json();
+auth = getAuth(initializeApp(config.firebase));
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { screen("signin"); return; }
+  $("whoEmail").textContent = user.email;
+  await loadMe();
+});
+
+$("signInBtn").addEventListener("click", async () => {
+  show("signinError", false);
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (err) { $("signinError").textContent = err.message; show("signinError"); }
+});
+window.signOutNow = () => signOut(auth);
+$("signOutLink").addEventListener("click", () => signOut(auth));
+$("accountLink").addEventListener("click", () => { show("account", $("account").hidden); $("account").scrollIntoView({ behavior: "smooth" }); });
+
+async function loadMe() {
+  try { me = await apiJson("/api/me"); }
+  catch (err) {
+    if (err.code === "not_invited") { $("notInvitedEmail").textContent = auth.currentUser.email; screen("notInvited"); return; }
+    throw err;
+  }
+  if (!me.consents.terms || !me.consents.recording_permission) { screen("consent"); return; }
+  screen("app");
+  renderAccount(); loadLessons();
+  const u = me.usage;
+  $("limitsNote").textContent = `m4a, mp3, wav, webm … up to ${u.max_minutes} minutes · ${u.lessons_last_24h} of ${u.daily_lessons} lessons used in the last 24 hours`;
+  if (u.paused) { $("uploadError").textContent = "Lomb has reached its budget for this month. Uploads reopen on the 1st."; show("uploadError"); }
+  const m = location.hash.match(/session=([\w-]+)/);
+  if (m && !sessionId) openLesson(m[1]);
 }
 
-function show(id, on = true) { $(id).hidden = !on; }
+// --- consent ---------------------------------------------------------------------
+["cTerms", "cRecording"].forEach((id) => $(id).addEventListener("change", () => {
+  $("consentBtn").disabled = !($("cTerms").checked && $("cRecording").checked);
+}));
+$("consentBtn").addEventListener("click", async () => {
+  $("consentBtn").disabled = true;
+  for (const t of ["terms", "recording_permission"]) await api("/api/consents", { method: "POST", body: JSON.stringify({ consent_type: t }) });
+  await loadMe();
+});
 
-function setStage(stage) {
-  const idx = ORDER.indexOf(stage);
-  document.querySelectorAll("ol.steps li").forEach((li) => {
-    const i = ORDER.indexOf(li.dataset.step);
-    li.classList.toggle("done", i < idx || stage === "complete");
-    li.classList.toggle("active", i === idx && stage !== "complete");
+// --- voice recognition (biometric) ---------------------------------------------------
+function renderAccount() {
+  const on = me.consents.biometric_enrollment;
+  $("voiceStatus").textContent = on ? (me.has_voiceprint ? "on" : "on (learning your voice from your next confirmed lesson)") : "off";
+  show("voiceOn", !on); show("voiceOff", on);
+}
+window.openBiometric = (fromLesson) => {
+  enrollFrom = fromLesson ? sessionId : null;
+  show("voiceOffer", false); show("biometric"); $("biometric").scrollIntoView({ behavior: "smooth" });
+};
+window.closeBiometric = () => show("biometric", false);
+window.dismissVoiceOffer = () => { show("voiceOffer", false); try { localStorage.setItem("lomb.voiceOfferDismissed", "1"); } catch (e) {} };
+const bioReady = () => { $("bioSign").disabled = !($("bioAgree").checked && $("bioName").value.trim().length >= 3); };
+$("bioAgree").addEventListener("change", bioReady); $("bioName").addEventListener("input", bioReady);
+$("bioSign").addEventListener("click", async () => {
+  $("bioSign").disabled = true; show("bioError", false);
+  try {
+    await api("/api/consents", { method: "POST", body: JSON.stringify(
+      { consent_type: "biometric_enrollment", signature: $("bioName").value.trim(), session_id: enrollFrom }) });
+    show("biometric", false); me = await apiJson("/api/me"); renderAccount();
+  } catch (err) { $("bioError").textContent = err.message; show("bioError"); bioReady(); }
+});
+$("voiceOff").addEventListener("click", async () => {
+  if (!confirm("Turn off voice recognition and permanently delete your voiceprint?")) return;
+  await api("/api/consents/biometric_enrollment", { method: "DELETE" });
+  me = await apiJson("/api/me"); renderAccount();
+});
+$("deleteAccount").addEventListener("click", async () => {
+  if (!confirm("Permanently delete your account, every lesson and your voiceprint?")) return;
+  await api("/api/me", { method: "DELETE" });
+  await signOut(auth); location.hash = ""; location.reload();
+});
+
+// --- lessons list --------------------------------------------------------------------
+async function loadLessons() {
+  const { sessions } = await apiJson("/api/sessions");
+  show("noLessons", sessions.length === 0);
+  $("lessonRows").innerHTML = "";
+  const labels = { complete: "Ready", processing: "Processing", awaiting_speaker_selection: "Needs your pick", failed: "Failed" };
+  sessions.forEach((s) => {
+    const tr = document.createElement("tr");
+    const when = new Date(s.created_at).toLocaleString();
+    const mins = s.duration_seconds ? `${Math.round(s.duration_seconds / 60)} min` : "";
+    tr.innerHTML = `<td>${when}</td><td>${mins}</td><td>${labels[s.status] || s.status}</td>
+      <td><button class="ghost small">Open</button> <button class="danger small">Delete</button></td>`;
+    const [openBtn, delBtn] = tr.querySelectorAll("button");
+    openBtn.addEventListener("click", () => openLesson(s.session_id));
+    delBtn.addEventListener("click", async () => {
+      if (!confirm("Delete this lesson, its recording, transcript and reports?")) return;
+      try { await api(`/api/sessions/${s.session_id}`, { method: "DELETE" }); }
+      catch (err) { alert(err.message); return; }
+      if (sessionId === s.session_id) backHome(); else loadLessons();
+    });
+    $("lessonRows").appendChild(tr);
   });
 }
 
+// --- upload ---------------------------------------------------------------------
 function pickFile(f) {
   if (!f) return;
   file = f;
   $("chosen").textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
   show("chosen"); $("start").disabled = false;
 }
-
 $("file").addEventListener("change", (e) => pickFile(e.target.files[0]));
 ["dragenter", "dragover"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
 ["dragleave", "drop"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
@@ -167,35 +373,62 @@ $("start").addEventListener("click", async () => {
   show("progress"); setStage("upload"); startedAt = Date.now();
   try {
     const contentType = file.type || "application/octet-stream";
-    const up = await api("/api/uploads", { method: "POST",
+    const up = await apiJson("/api/uploads", { method: "POST",
       body: JSON.stringify({ filename: file.name, size_bytes: file.size, content_type: contentType }) });
     await putFile(up.upload_url, file, contentType);
     const speakers = $("speakers").value;
-    const s = await api("/api/sessions", { method: "POST",
+    const s = await apiJson("/api/sessions", { method: "POST",
       body: JSON.stringify({ storage_uri: up.storage_uri, num_speakers: speakers ? Number(speakers) : null }) });
-    sessionId = s.session_id;
-    location.hash = `session=${sessionId}`;
-    show("upload", false);
-    poll();
+    file = null; show("chosen", false); $("file").value = "";
+    openLesson(s.session_id, true);
   } catch (err) {
     show("progress", false); $("start").disabled = false;
     $("uploadError").textContent = err.message; show("uploadError");
   }
 });
 
+// --- one lesson ------------------------------------------------------------------------
+function setStage(stage) {
+  const idx = ORDER.indexOf(stage);
+  document.querySelectorAll("ol.steps li").forEach((li) => {
+    const i = ORDER.indexOf(li.dataset.step);
+    li.classList.toggle("done", i < idx || stage === "complete");
+    li.classList.toggle("active", i === idx && stage !== "complete");
+  });
+}
+
+function openLesson(id, fresh = false) {
+  clearTimeout(pollTimer);
+  sessionId = id; location.hash = `session=${id}`;
+  if (!fresh) startedAt = null;
+  ["upload", "result", "failed", "picker", "voiceOffer"].forEach((s) => show(s, false));
+  show("progress"); loadLessons(); poll();
+}
+
+window.backHome = () => {
+  clearTimeout(pollTimer); sessionId = null; location.hash = "";
+  ["progress", "picker", "voiceOffer", "biometric", "failed", "result"].forEach((s) => show(s, false));
+  show("upload"); $("start").disabled = !file; loadMe();
+};
+
 async function poll() {
   clearTimeout(pollTimer);
+  const id = sessionId;
   let s;
-  try { s = await api(`/api/sessions/${sessionId}`); }
-  catch (err) { pollTimer = setTimeout(poll, 5000); return; }
+  try { s = await apiJson(`/api/sessions/${id}`); }
+  catch (err) {
+    if (err.status === 404) { backHome(); return; }
+    pollTimer = setTimeout(poll, 5000); return;
+  }
+  if (id !== sessionId) return;
   const mins = startedAt ? Math.floor((Date.now() - startedAt) / 60000) : null;
   $("elapsed").textContent = s.status === "processing"
-    ? `A 30-minute lesson takes about 5–8 minutes${mins !== null ? ` · ${mins} min so far` : ""}. You can leave this page open or come back to this link later.`
+    ? `A 30-minute lesson takes about 5–8 minutes${mins !== null ? ` · ${mins} min so far` : ""}. You can close this page; the lesson stays in your list.`
     : "";
   setStage(s.stage);
   if (s.status === "awaiting_speaker_selection") { renderPicker(s.speakers); return; }
   show("picker", false);
-  if (s.status === "complete") return showResult();
+  if (s.status === "complete") return showResult(s);
   if (s.status === "failed") { show("progress", false); show("failed"); return; }
   pollTimer = setTimeout(poll, 4000);
 }
@@ -219,29 +452,33 @@ async function choose(label) {
   document.querySelectorAll("#speakerList button").forEach((b) => (b.disabled = true));
   try {
     await api(`/api/sessions/${sessionId}/speaker`, { method: "POST", body: JSON.stringify({ speaker_label: label }) });
-    show("picker", false); setStage("analyzing"); pollTimer = setTimeout(poll, 3000);
+    show("picker", false); setStage("analyzing");
+    let dismissed = false;
+    try { dismissed = localStorage.getItem("lomb.voiceOfferDismissed") === "1"; } catch (e) {}
+    if (!me.consents.biometric_enrollment && !dismissed) show("voiceOffer");
+    pollTimer = setTimeout(poll, 3000);
   } catch (err) {
     alert(err.message);
     document.querySelectorAll("#speakerList button").forEach((b) => (b.disabled = false));
   }
 }
 
-function showResult() {
+async function showResult(s) {
   show("progress", false); show("picker", false); show("result");
-  $("report2").href = `/api/sessions/${sessionId}/report2`;
+  show("autoNote", s.speaker_method === "voiceprint_auto");
+  const html = await (await api(`/api/sessions/${sessionId}/report`)).text();
   const frame = $("report");
   frame.onload = () => { try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 40 + "px"; } catch (e) {} };
-  frame.src = `/api/sessions/${sessionId}/report`;
+  frame.srcdoc = html;
+  loadLessons();
 }
 
-function startOver() {
-  clearTimeout(pollTimer);
-  location.hash = ""; location.reload();
-}
-
-// Opening a lesson's link again picks up where it is.
-const m = location.hash.match(/session=([\w-]+)/);
-if (m) { sessionId = m[1]; show("upload", false); show("progress"); poll(); }
+$("report2Btn").addEventListener("click", async () => {
+  const blob = await (await api(`/api/sessions/${sessionId}/report2`)).blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `lomb_report2_${sessionId.slice(5, 13)}.xlsx`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
 </script>
 </body>
 </html>

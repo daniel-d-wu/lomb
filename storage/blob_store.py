@@ -34,6 +34,14 @@ class BlobStore(ABC):
     def read_bytes(self, uri: str) -> bytes:
         """The whole object -- for small files like a Report 2 export."""
 
+    @abstractmethod
+    def move(self, uri: str, key: str) -> str:
+        """Move a stored object to `key`; return its new URI."""
+
+    @abstractmethod
+    def delete(self, uri: str) -> None:
+        """Remove it; a missing object is not an error."""
+
 
 class LocalBlobStore(BlobStore):
     """A folder on disk; URIs are absolute file paths."""
@@ -73,6 +81,14 @@ class LocalBlobStore(BlobStore):
 
     def read_bytes(self, uri):
         return Path(uri).read_bytes()
+
+    def move(self, uri, key):
+        dest = self._path(key)
+        shutil.move(uri, dest)
+        return str(dest)
+
+    def delete(self, uri):
+        Path(uri).unlink(missing_ok=True)
 
 
 class GCSBlobStore(BlobStore):
@@ -115,6 +131,19 @@ class GCSBlobStore(BlobStore):
 
     def read_bytes(self, uri):
         return self._blob(uri).download_as_bytes()
+
+    def move(self, uri, key):
+        src = self._blob(uri)
+        self._bucket.copy_blob(src, self._bucket, key)  # server-side copy, then delete
+        src.delete()
+        return self._uri(key)
+
+    def delete(self, uri):
+        from google.api_core.exceptions import NotFound
+        try:
+            self._blob(uri).delete()
+        except NotFound:
+            pass
 
     def browser_upload_url(self, key: str, *, content_type: str, size: int, origin: str | None) -> str:
         """A resumable-upload session the browser PUTs the file to directly

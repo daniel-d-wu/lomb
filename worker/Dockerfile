@@ -10,7 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/venv/bin:$PATH \
     HF_HOME=/models/hf \
     TORCH_HOME=/models/torch \
-    NLTK_DATA=/models/nltk
+    NLTK_DATA=/models/nltk \
+    LOMB_ECAPA_DIR=/models/ecapa
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3.12 python3.12-venv libpython3.12 ffmpeg libsndfile1 ca-certificates \

@@ -9,3 +9,5 @@ sqlalchemy==2.0.43
 google-cloud-storage==3.17.0
 google-cloud-tasks==2.26.0
 google-auth==2.50.0
+requests==2.34.2
+numpy==2.3.5

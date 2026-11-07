@@ -239,8 +239,57 @@ CREATE TABLE IF NOT EXISTS report_snapshots (
     generated_at     TEXT NOT NULL,
     UNIQUE(run_id)
 );
+
+-- v1.6 (2026-10-19, build step 6): accounts, consent, voiceprints.
+-- user_id is the Firebase Auth uid. sessions.user_id has no FK: sessions
+-- made before accounts existed have none.
+CREATE TABLE IF NOT EXISTS users (
+    user_id       TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,     -- lowercase, as verified by Google
+    display_name  TEXT,
+    source        TEXT NOT NULL,            -- 'public_demo'
+    created_at    TEXT NOT NULL,
+    last_seen_at  TEXT
+);
+
+-- Invite-only access: an email listed here may sign in and use Lomb.
+CREATE TABLE IF NOT EXISTS invites (
+    email       TEXT PRIMARY KEY,           -- lowercase
+    note        TEXT,
+    invited_at  TEXT NOT NULL
+);
+
+-- What each user agreed to, under which version of the policy text, and
+-- when -- evidence, not just a flag (BIPA requires a written release for
+-- voiceprints). Withdrawing sets revoked_at; the row stays until the
+-- account is deleted.
+CREATE TABLE IF NOT EXISTS consent_events (
+    consent_id      TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(user_id),
+    consent_type    TEXT NOT NULL,          -- 'terms' / 'recording_permission' / 'biometric_enrollment'
+    policy_version  TEXT NOT NULL,          -- which policy text was shown
+    method          TEXT,                   -- 'web_checkbox' / 'web_esignature'
+    signature       TEXT,                   -- the typed full name, for an e-signature
+    granted_at      TEXT NOT NULL,
+    revoked_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_consent_events_user ON consent_events(user_id, consent_type);
+
+-- One voiceprint per user (voice_enrollment's running spherical mean).
+-- Only the user's own voice: other speakers' embeddings are never stored.
+CREATE TABLE IF NOT EXISTS voiceprints (
+    user_id            TEXT PRIMARY KEY REFERENCES users(user_id),
+    embedding          BLOB NOT NULL,       -- float32 bytes, unit length
+    embedding_dim      INTEGER NOT NULL,
+    sample_count       INTEGER NOT NULL,
+    embedder_id        TEXT NOT NULL,       -- which model produced the vector
+    enrollment_source  TEXT NOT NULL,       -- 'session' / 'active'
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL,
+    last_used_at       TEXT NOT NULL        -- destroyed after a year unused (privacy policy)
+);
 """
-SCHEMA_VERSION = "1.5"
+SCHEMA_VERSION = "1.6"
 
 # Taxonomy rows (feature_key, construct_key, computation_path, metric_key,
 # unit, formula), one per fluenceme. Derived from pipeline/registry.py as
@@ -360,6 +409,56 @@ class StorageRepository(ABC):
 
     @abstractmethod
     def list_information_items(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
+
+    # --- accounts (v1.6) ---
+
+    @abstractmethod
+    def is_invited(self, email: str) -> bool: ...
+
+    @abstractmethod
+    def add_invite(self, email: str, note: str | None = None) -> None: ...
+
+    @abstractmethod
+    def remove_invite(self, email: str) -> None: ...
+
+    @abstractmethod
+    def list_invites(self) -> list[dict]: ...
+
+    @abstractmethod
+    def upsert_user(self, user_id: str, email: str, display_name: str | None, source: str = "public_demo") -> dict: ...
+
+    @abstractmethod
+    def get_user(self, user_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def record_consent(self, consent_id: str, user_id: str, consent_type: str, policy_version: str, *,
+                       method: str, signature: str | None = None) -> None: ...
+
+    @abstractmethod
+    def revoke_consent(self, user_id: str, consent_type: str) -> None: ...
+
+    @abstractmethod
+    def active_consents(self, user_id: str) -> dict[str, dict]:
+        """consent_type -> its latest unrevoked row."""
+
+    @abstractmethod
+    def list_user_sessions(self, user_id: str) -> list[dict]: ...
+
+    @abstractmethod
+    def count_user_sessions_since(self, user_id: str, since_iso: str) -> int: ...
+
+    @abstractmethod
+    def lesson_minutes_since(self, since_iso: str) -> tuple[int, float]:
+        """(lessons, audio minutes) uploaded by everyone since then -- for the spend cap."""
+
+    @abstractmethod
+    def delete_session(self, session_id: str) -> list[str]:
+        """Every row of one lesson. Returns the stored-file URIs it pointed
+        at, for the caller to delete from the BlobStore."""
+
+    @abstractmethod
+    def delete_user(self, user_id: str) -> list[str]:
+        """The account and everything in it; returns stored-file URIs."""
 
     @abstractmethod
     def list_metric_values(self, session_id: str, run_id: str | None = None) -> list[dict]: ...
@@ -667,6 +766,101 @@ class SQLStorageRepository(StorageRepository):
     def latest_report2_export(self, session_id: str) -> dict | None:
         return self._one("SELECT * FROM report2_exports WHERE session_id = ? ORDER BY generated_at DESC LIMIT 1",
                          (session_id,))
+
+    # --- accounts (v1.6) -----------------------------------------------------
+
+    def is_invited(self, email: str) -> bool:
+        return self._one("SELECT 1 AS ok FROM invites WHERE email = ?", (email.lower(),)) is not None
+
+    def add_invite(self, email: str, note: str | None = None) -> None:
+        self._execute("INSERT INTO invites (email, note, invited_at) VALUES (?, ?, ?) ON CONFLICT(email) DO NOTHING",
+                      (email.lower(), note, _now()))
+
+    def remove_invite(self, email: str) -> None:
+        self._execute("DELETE FROM invites WHERE email = ?", (email.lower(),))
+
+    def list_invites(self) -> list[dict]:
+        return self._all("SELECT * FROM invites ORDER BY invited_at")
+
+    def upsert_user(self, user_id, email, display_name, source="public_demo") -> dict:
+        now = _now()
+        self._execute(
+            """
+            INSERT INTO users (user_id, email, display_name, source, created_at, last_seen_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                email = excluded.email, display_name = excluded.display_name, last_seen_at = excluded.last_seen_at
+            """,
+            (user_id, email.lower(), display_name, source, now, now),
+        )
+        return self.get_user(user_id)
+
+    def get_user(self, user_id: str) -> dict | None:
+        return self._one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+
+    def record_consent(self, consent_id, user_id, consent_type, policy_version, *, method, signature=None) -> None:
+        self._execute(
+            """
+            INSERT INTO consent_events
+                (consent_id, user_id, consent_type, policy_version, method, signature, granted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (consent_id, user_id, consent_type, policy_version, method, signature, _now()),
+        )
+
+    def revoke_consent(self, user_id: str, consent_type: str) -> None:
+        self._execute("UPDATE consent_events SET revoked_at = ? WHERE user_id = ? AND consent_type = ? "
+                      "AND revoked_at IS NULL", (_now(), user_id, consent_type))
+
+    def active_consents(self, user_id: str) -> dict[str, dict]:
+        rows = self._all("SELECT * FROM consent_events WHERE user_id = ? AND revoked_at IS NULL ORDER BY granted_at",
+                         (user_id,))
+        return {r["consent_type"]: r for r in rows}  # latest wins
+
+    def list_user_sessions(self, user_id: str) -> list[dict]:
+        return self._all(
+            """
+            SELECT s.session_id, s.status, s.created_at, a.duration_seconds
+            FROM sessions s LEFT JOIN audio_assets a ON a.session_id = s.session_id
+            WHERE s.user_id = ? ORDER BY s.created_at DESC
+            """, (user_id,))
+
+    def count_user_sessions_since(self, user_id: str, since_iso: str) -> int:
+        return self._one("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND created_at >= ?",
+                         (user_id, since_iso))["n"]
+
+    def lesson_minutes_since(self, since_iso: str) -> tuple[int, float]:
+        row = self._one("SELECT COUNT(*) AS n, COALESCE(SUM(a.duration_seconds), 0) AS seconds FROM sessions s "
+                        "JOIN audio_assets a ON a.session_id = s.session_id WHERE s.created_at >= ?", (since_iso,))
+        return int(row["n"]), float(row["seconds"]) / 60
+
+    # Children before parents, so foreign keys hold at every step.
+    _SESSION_TABLES = ("correction_checks", "information_items", "metric_values", "report_snapshots",
+                       "report2_exports", "analysis_runs")
+
+    def delete_session(self, session_id: str) -> list[str]:
+        with self.transaction():
+            uris = [r["uri"] for r in self._all(
+                "SELECT storage_uri AS uri FROM audio_assets WHERE session_id = ? "
+                "UNION ALL SELECT raw_json_uri FROM transcripts WHERE session_id = ? "
+                "UNION ALL SELECT storage_uri FROM report2_exports WHERE session_id = ?",
+                (session_id, session_id, session_id))]
+            for table in self._SESSION_TABLES:
+                self._execute(f"DELETE FROM {table} WHERE session_id = ?", (session_id,))
+            self._execute("DELETE FROM speaker_resolution_candidates WHERE resolution_id IN "
+                          "(SELECT resolution_id FROM speaker_resolutions WHERE session_id = ?)", (session_id,))
+            for table in ("speaker_resolutions", "transcripts", "audio_assets", "sessions"):
+                self._execute(f"DELETE FROM {table} WHERE session_id = ?", (session_id,))
+        return uris
+
+    def delete_user(self, user_id: str) -> list[str]:
+        with self.transaction():
+            uris = []
+            for s in self._all("SELECT session_id FROM sessions WHERE user_id = ?", (user_id,)):
+                uris += self.delete_session(s["session_id"])
+            for table in ("voiceprints", "consent_events", "users"):
+                self._execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+        return uris
 
 
 class SQLiteStorageRepository(SQLStorageRepository):

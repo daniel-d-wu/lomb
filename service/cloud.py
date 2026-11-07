@@ -15,8 +15,8 @@ Settings come from environment variables, set on the Cloud Run service:
   OPENAI_API_KEY       from Secret Manager (open-ai-key)
   HF_TOKEN             from Secret Manager (hf-token); worker only
 
-No voiceprints exist in the cloud yet (enrollment is step 6), so
-speaker_service is None and every lesson asks "which one is you?".
+The worker also gets the voiceprint matcher (ECAPA + the voiceprints
+table); it is only used for users with biometric consent (lesson_job).
 """
 
 import os
@@ -49,11 +49,15 @@ def cloud_deps(*, with_transcriber: bool, with_llm: bool = True) -> LessonDeps:
         _secret("OPENAI_API_KEY")
         provider = OpenAIProvider(model=os.environ.get("LOMB_LLM_MODEL", "gpt-5.6-luna"),
                                   reasoning_effort=os.environ.get("LOMB_REASONING_EFFORT") or None)
-    transcriber = None
+    transcriber = speaker_service = None
     if with_transcriber:
         from transcript_processing.whisperx_engine import WhisperXTranscriber
+        from voice_enrollment.speechbrain_embedder import EcapaSpeakerEmbedder
+        from voice_enrollment.sql_voiceprints import SQLVoiceprintRepository
+        from voice_enrollment.voice_enrollment import SpeakerResolutionService
         transcriber = WhisperXTranscriber(_secret("HF_TOKEN"))
+        speaker_service = SpeakerResolutionService(EcapaSpeakerEmbedder(), SQLVoiceprintRepository(repo))
     return LessonDeps(repo=repo, blobs=GCSBlobStore(os.environ["LOMB_BUCKET"]), transcriber=transcriber,
-                      provider=provider, speaker_service=None,
+                      provider=provider, speaker_service=speaker_service,
                       llm_model=provider.model if provider else "none",
                       llm_settings=provider.generation_config if provider else {})

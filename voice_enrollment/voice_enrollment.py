@@ -440,18 +440,19 @@ class SpeakerResolutionService:
             raise ValueError("resolve() called with no detected speakers -- caller should have failed the upload before this point")
 
         stored = self.repository.get(user_id)
-        candidate_embeddings = {s.speaker_label: self.embedder.embed(s.waveform) for s in speakers}
-
         if stored is None:
             # No voiceprint on file yet -- always the existing manual picker.
-            # candidates has no meaningful similarity to report yet; still
-            # populate labels so the picker UI has something to key off.
+            # Nobody's voice is embedded in this case (2026-10-19, failure
+            # mode S6: conversation partners never consented, so their
+            # voices are only analysed when there's a voiceprint to compare
+            # against). candidates carry labels only, for the picker UI.
             return SpeakerResolution(
                 needs_manual_confirmation=True,
                 resolved_speaker_label=None,
-                candidates=[SpeakerCandidate(label, similarity=0.0) for label in candidate_embeddings],
+                candidates=[SpeakerCandidate(s.speaker_label, similarity=0.0) for s in speakers],
                 reason="no_enrolled_voiceprint",
             )
+        candidate_embeddings = {s.speaker_label: self.embedder.embed(s.waveform) for s in speakers}
 
         reference_vec, _sample_count = stored
         ranked = sorted(

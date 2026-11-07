@@ -37,7 +37,8 @@ from storage.storage import DDL, SQLStorageRepository  # noqa: E402
 INSTANCE = "lomb-prod:us-east4:lomb-db"
 SCHEMA_LOCK = 7011001  # pg_advisory_xact_lock key: one schema creation at a time across instances
 
-PG_DDL = DDL.replace("BOOLEAN NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE")
+PG_DDL = (DDL.replace("BOOLEAN NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE")
+          .replace(" BLOB ", " BYTEA "))
 
 
 def _statements(ddl: str) -> list[str]:

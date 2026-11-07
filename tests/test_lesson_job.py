@@ -8,6 +8,12 @@ take, with no GPU, no network and no API key:
   C. re-analysis           -> a second analysis_run on the SAME session
   D. a failure mid-job     -> session marked 'failed'
   E. a failure while saving -> the whole analysis rolls back (D4)
+  F. no biometric consent  -> picker, and nobody's voice is analysed
+  G. real voiceprint store -> first lesson enrolls the picked voice,
+                              the next one is matched automatically
+  H. upload checks         -> moved out of uploads/; non-audio and
+                              too-long files refused and deleted
+  I. deletion              -> a lesson, then a whole account, rows and files
 
 Uses a tiny synthetic WhisperX transcript, the pipeline's FakeProvider, a
 fake speaker-resolution service, and a local folder for files. The database
@@ -21,6 +27,7 @@ import argparse
 import shutil
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -30,11 +37,15 @@ import numpy as np  # noqa: E402
 import voice_enrollment.audio_decode as audio_decode  # noqa: E402
 from pipeline.fake_provider import FakeProvider  # noqa: E402
 from service.lesson_job import (  # noqa: E402
-    LessonDeps, analyze_lesson, process_lesson, resume_with_speaker, submit_lesson,
+    BIOMETRIC_CONSENT, LessonDeps, analyze_lesson, delete_account, delete_lesson, process_lesson,
+    register_upload, resume_with_speaker, submit_lesson,
 )
 from storage.blob_store import LocalBlobStore  # noqa: E402
 from storage.storage import PHASE1_TAXONOMY, SQLiteStorageRepository  # noqa: E402
-from voice_enrollment.voice_enrollment import SpeakerCandidate, SpeakerResolution  # noqa: E402
+from voice_enrollment.sql_voiceprints import SQLVoiceprintRepository  # noqa: E402
+from voice_enrollment.voice_enrollment import (  # noqa: E402
+    SpeakerCandidate, SpeakerEmbedder, SpeakerResolution, SpeakerResolutionService,
+)
 
 LEARNER = ["Ich wohne in die Stadt.", "Gestern ich gehe nach Hause.", "Das ist ein gut Idee, äh, glaube ich."]
 TUTOR = ["Wo wohnst du jetzt?", "Und was hast du gestern gemacht?", "Das klingt gut."]
@@ -67,12 +78,53 @@ class FakeSpeakerService:
 
     def __init__(self, confident: bool):
         self.confident = confident
+        self.enrolled = []
+
+    def enroll(self, user_id, confirmed_speaker):
+        self.enrolled.append((user_id, confirmed_speaker.speaker_label))
 
     def resolve(self, user_id, speakers):
         ranked = [SpeakerCandidate("SPEAKER_00", 0.71 if self.confident else 0.52), SpeakerCandidate("SPEAKER_01", 0.04)]
         if self.confident:
             return SpeakerResolution(False, "SPEAKER_00", ranked, "confident_match")
         return SpeakerResolution(True, None, ranked, "below_match_threshold")
+
+
+class MustNotListen:
+    """Fails the test if any voice is analysed."""
+    match_threshold, margin_threshold = 0.55, 0.25
+
+    def resolve(self, user_id, speakers):
+        raise AssertionError("voices were analysed without biometric consent")
+
+    def enroll(self, user_id, confirmed_speaker):
+        raise AssertionError("a voice was enrolled without biometric consent")
+
+
+class FakeEmbedder(SpeakerEmbedder):
+    """Each fake speaker's waveform is a constant (see fake_speaker_audio);
+    the embedding is a one-hot vector for that constant."""
+    model_id = "fake-embedder"
+
+    def __init__(self):
+        self.calls = 0
+
+    def embed(self, waveform):
+        self.calls += 1
+        v = np.zeros(8, dtype=np.float32)
+        v[int(round(float(waveform[0])))] = 1.0
+        return v
+
+
+def fake_speaker_audio(path, turns, **kw):
+    # Speaker-audio slicing needs real audio + ffmpeg; one distinct constant per speaker instead.
+    return {t.speaker_id: np.full(16000, 1.0 + int(t.speaker_id[-1]), dtype=np.float32) for t in turns}
+
+
+def tone_wav(path: Path, seconds: float) -> Path:
+    import soundfile as sf
+    sf.write(path, (0.1 * np.sin(np.arange(int(16000 * seconds)) / 10)).astype(np.float32), 16000)
+    return path
 
 
 class BrokenProvider(FakeProvider):
@@ -129,9 +181,7 @@ def main() -> int:
     parser.add_argument("--cloudsql", metavar="EMAIL", help="Run against Cloud SQL (lomb_test) as this IAM user.")
     parser.add_argument("--token-env", help="Env var holding an access token to log in with (else ADC).")
     args = parser.parse_args()
-    # Speaker-audio slicing needs real audio + ffmpeg; the fake service ignores it anyway.
-    audio_decode.extract_speaker_audio = lambda path, turns, **kw: {
-        t.speaker_id: np.zeros(16000 * 5, dtype=np.float32) for t in turns}
+    audio_decode.extract_speaker_audio = fake_speaker_audio
     tmp = Path(tempfile.mkdtemp())
     try:
         repo = make_repo(args, tmp)
@@ -141,17 +191,27 @@ def main() -> int:
         audio.write_bytes(b"not really audio")
         n_metrics = len(PHASE1_TAXONOMY)
 
-        def deps(confident=True, provider=None):
+        def new_user(consent: bool) -> str:
+            user_id = f"test-{uuid.uuid4()}"
+            repo.upsert_user(user_id, f"{user_id}@example.com", "Test User")
+            if consent:
+                repo.record_consent(f"c-{uuid.uuid4()}", user_id, BIOMETRIC_CONSENT, "test", method="test",
+                                    signature="Test User")
+            return user_id
+
+        def deps(confident=True, provider=None, speaker_service=None):
             return LessonDeps(repo=repo, blobs=blobs, transcriber=StubTranscriber(),
                               provider=provider or FakeProvider(error_every=1),
-                              speaker_service=FakeSpeakerService(confident),
+                              speaker_service=speaker_service or FakeSpeakerService(confident),
                               llm_model="FakeProvider")
+
+        user = new_user(consent=True)
 
         print("--- A. confident voiceprint match -> straight through ---")
         d = deps(confident=True)
-        sid = submit_lesson(d, audio_path=audio, user_id="1")
+        sid = submit_lesson(d, audio_path=audio, user_id=user)
         assert repo.get_session(sid)["status"] == "processing"
-        out = process_lesson(d, session_id=sid, user_id="1")
+        out = process_lesson(d, session_id=sid, user_id=user)
         c = counts(repo, sid)
         print(f"  status={out.status}  {c}")
         assert out.status == "complete" and repo.get_session(sid)["status"] == "complete"
@@ -166,8 +226,8 @@ def main() -> int:
 
         print("--- B. unsure match -> picker -> resume ---")
         d = deps(confident=False)
-        sid_b = submit_lesson(d, audio_path=audio, user_id="1")
-        out = process_lesson(d, session_id=sid_b, user_id="1")
+        sid_b = submit_lesson(d, audio_path=audio, user_id=user)
+        out = process_lesson(d, session_id=sid_b, user_id=user)
         print(f"  status={out.status}  candidates={[(x['speaker_label'], x['similarity']) for x in out.candidates]}")
         assert out.status == "awaiting_speaker_selection" == repo.get_session(sid_b)["status"]
         assert out.candidates[0]["preview_text"].startswith("Ich wohne"), out.candidates[0]
@@ -177,6 +237,7 @@ def main() -> int:
         print(f"  after pick: status={out.status}  resolution={res['outcome']} -> {res['resolved_speaker_label']}")
         assert out.status == "complete" and res["outcome"] == "manual_override"
         assert repo.latest_transcript(sid_b)["speaker_resolution_method"] == "manual_picker"
+        assert d.speaker_service.enrolled == [(user, "SPEAKER_00")], "a confirmed pick reinforces the voiceprint"
 
         print("--- C. re-analysis -> second run on the same session ---")
         t = repo.latest_transcript(sid)
@@ -191,9 +252,9 @@ def main() -> int:
 
         print("--- D. failure mid-job -> session 'failed' ---")
         d = deps(provider=BrokenProvider())
-        sid_d = submit_lesson(d, audio_path=audio, user_id="1")
+        sid_d = submit_lesson(d, audio_path=audio, user_id=user)
         try:
-            process_lesson(d, session_id=sid_d, user_id="1")
+            process_lesson(d, session_id=sid_d, user_id=user)
             raise AssertionError("expected the simulated outage to raise")
         except RuntimeError as e:
             assert "simulated OpenAI outage" in str(e)
@@ -203,9 +264,9 @@ def main() -> int:
         print("--- E. failure while saving -> nothing half-written ---")
         d = deps()
         d.blobs = ExportFailsBlobStore(tmp / "blobs")
-        sid_e = submit_lesson(d, audio_path=audio, user_id="1")
+        sid_e = submit_lesson(d, audio_path=audio, user_id=user)
         try:
-            process_lesson(d, session_id=sid_e, user_id="1")
+            process_lesson(d, session_id=sid_e, user_id=user)
             raise AssertionError("expected the simulated storage outage to raise")
         except OSError as e:
             assert "simulated storage outage" in str(e)
@@ -215,6 +276,67 @@ def main() -> int:
         assert c["transcripts"] == 1 and c["speaker_resolutions"] == 1, "work before the analysis is kept"
         for table in ("analysis_runs", "information_items", "correction_checks", "metric_values", "report_snapshots"):
             assert c[table] == 0, f"{table} should have rolled back"
+
+        print("--- F. no biometric consent -> picker, no voice analysed ---")
+        stranger = new_user(consent=False)
+        d = deps(speaker_service=MustNotListen())
+        sid_f = submit_lesson(d, audio_path=audio, user_id=stranger)
+        out = process_lesson(d, session_id=sid_f, user_id=stranger)
+        assert out.status == "awaiting_speaker_selection"
+        assert repo.list_speaker_resolutions(sid_f)[0]["reason"] == "no_enrolled_voiceprint"
+        out = resume_with_speaker(d, session_id=sid_f, speaker_label="SPEAKER_00")
+        print(f"  status={out.status}, nothing embedded or enrolled")
+        assert out.status == "complete"
+
+        print("--- G. real voiceprint store: enroll, then match ---")
+        learner = new_user(consent=True)
+        embedder = FakeEmbedder()
+        voiceprints = SQLVoiceprintRepository(repo)
+        d = deps(speaker_service=SpeakerResolutionService(embedder, voiceprints))
+        sid_g1 = submit_lesson(d, audio_path=audio, user_id=learner)
+        out = process_lesson(d, session_id=sid_g1, user_id=learner)
+        assert out.status == "awaiting_speaker_selection" and embedder.calls == 0, "no voiceprint yet: nobody embedded"
+        resume_with_speaker(d, session_id=sid_g1, speaker_label="SPEAKER_00")
+        vec, n = voiceprints.get(learner)
+        assert n == 1 and embedder.calls == 1, "only the picked voice is embedded and stored"
+        sid_g2 = submit_lesson(d, audio_path=audio, user_id=learner)
+        out = process_lesson(d, session_id=sid_g2, user_id=learner)
+        t = repo.latest_transcript(sid_g2)
+        print(f"  second lesson: {out.status} via {t['speaker_resolution_method']} -> {t['target_speaker_label']}")
+        assert out.status == "complete" and t["target_speaker_label"] == "SPEAKER_00"
+
+        print("--- H. upload checks ---")
+        up = blobs.put_file(tone_wav(tmp / "tone.wav", 2.0), "uploads/tone.wav")
+        sid_h = register_upload(d, storage_uri=up, user_id=learner, max_seconds=60)
+        moved = repo.get_audio_asset(sid_h)["storage_uri"]
+        assert "audio" in Path(moved).parts and not blobs.exists(up), "moved out of uploads/"
+        assert abs(repo.get_audio_asset(sid_h)["duration_seconds"] - 2.0) < 0.1
+        for name, max_s, msg in (("junk.m4a", None, "look like audio"), ("long.wav", 1, "up to")):
+            src = tmp / name
+            if name.endswith(".wav"):
+                tone_wav(src, 2.0)
+            else:
+                src.write_bytes(b"junk")
+            up = blobs.put_file(src, f"uploads/{name}")
+            try:
+                register_upload(d, storage_uri=up, user_id=learner, max_seconds=max_s)
+                raise AssertionError(f"{name} should have been refused")
+            except ValueError as e:
+                assert msg in str(e) and not blobs.exists(up), (name, e)
+        print("  moved, measured; junk and too-long files refused and deleted")
+
+        print("--- I. deletion ---")
+        files = [repo.get_audio_asset(sid_b)["storage_uri"], repo.latest_transcript(sid_b)["raw_json_uri"],
+                 repo.latest_report2_export(sid_b)["storage_uri"]]
+        delete_lesson(d, sid_b)
+        assert not any(counts(repo, sid_b).values()), counts(repo, sid_b)
+        assert not any(blobs.exists(f) for f in files), "lesson files deleted"
+        delete_account(d, learner)
+        assert repo.get_user(learner) is None and voiceprints.get(learner) is None
+        assert not repo.active_consents(learner) and not repo.list_user_sessions(learner)
+        for s_ in (sid_g1, sid_g2, sid_h):
+            assert repo.get_session(s_) is None
+        print("  lesson, then account (lessons, voiceprint, consents) gone")
 
         print("\nAll lesson-job checks passed.")
         return 0

@@ -34,9 +34,11 @@ class EcapaSpeakerEmbedder(SpeakerEmbedder):
             from speechbrain.inference.speaker import EncoderClassifier
         except ImportError:
             from speechbrain.pretrained import EncoderClassifier  # older speechbrain
+        import os
         self._model = EncoderClassifier.from_hparams(
             source="speechbrain/spkrec-ecapa-voxceleb",
-            savedir="pretrained_models/spkrec-ecapa-voxceleb",
+            # the worker image bakes the model in at LOMB_ECAPA_DIR (2026-10-19)
+            savedir=os.environ.get("LOMB_ECAPA_DIR", "pretrained_models/spkrec-ecapa-voxceleb"),
         )
 
     def embed(self, waveform: np.ndarray) -> np.ndarray:

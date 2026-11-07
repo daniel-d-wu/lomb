@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lomb privacy policy</title>
+<style>
+  :root { --bg: #f6f5f1; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #e3e1da; --accent: #2f5d50; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151614; --card: #1f201d; --ink: #ecebe6; --muted: #a09f98; --line: #34352f; --accent: #7fb8a5; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 8px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; }
+  a { color: var(--accent); }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="/">← Back to Lomb</a></p>
+  <h1>Privacy policy</h1>
+  <p class="muted">Version {{POLICY_VERSION}}</p>
+
+  <p>Lomb is an invite-only demo that analyzes recordings of German lessons and shows the speaker where their German
+  went wrong and how to fix it. This page explains what it stores, why, where, and for how long.</p>
+
+  <h2>What Lomb stores</h2>
+  <ul>
+    <li><strong>Your Google account email and name</strong>, to sign you in and keep your lessons separate from
+      everyone else's.</li>
+    <li><strong>Recordings you upload</strong>, their <strong>transcripts</strong>, and the <strong>analysis
+      results</strong> (the errors found, corrections and reports).</li>
+    <li><strong>Records of what you agreed to</strong> on this page and when.</li>
+    <li><strong>A voiceprint, only if you turn on voice recognition</strong> (see below).</li>
+  </ul>
+
+  <h2>How it's processed</h2>
+  <ul>
+    <li>Recordings, transcripts and results are stored and processed on Google Cloud, in the United States
+      (Northern Virginia), encrypted at rest. Transcription runs on Lomb's own servers there.</li>
+    <li>To find errors, the <strong>text</strong> of what you said (not the audio) is sent to OpenAI's API, which
+      processes it under OpenAI's API data-usage terms.</li>
+    <li>Nothing is sold, rented or shared for advertising.</li>
+  </ul>
+
+  <h2>Other people in your recordings</h2>
+  <p>Lesson recordings usually include a tutor or conversation partner. Before uploading, you confirm that everyone
+  audible has agreed to being recorded and to the recording being analyzed by Lomb. The whole recording is
+  transcribed so the voices can be told apart, but only what <em>you</em> said is analyzed for errors. Lomb never
+  builds or stores a voiceprint of anyone else.</p>
+
+  <h2>How long things are kept</h2>
+  <ul>
+    <li>Recordings, transcripts and results: <strong>until you delete the lesson or your account</strong>. Deleting
+      removes them from Lomb's database and storage.</li>
+    <li>Records of what you agreed to: until you delete your account.</li>
+    <li>Voiceprints: see the schedule below.</li>
+  </ul>
+
+  <h2 id="voiceprints">Voice recognition and voiceprints (biometric data)</h2>
+  <div class="box">
+    <p><strong>What it is.</strong> If you turn on voice recognition, Lomb creates a <em>voiceprint</em>: a list of
+    numbers computed from your voice by a speech model (ECAPA), describing how your voice sounds. Laws such as
+    Illinois' Biometric Information Privacy Act treat this as a biometric identifier.</p>
+    <p><strong>Why.</strong> Its only purpose is to recognize which voice in your future uploads is yours, so you don't
+    have to pick yourself each time. It is never used for anything else.</p>
+    <p><strong>How it's made.</strong> From the voice you pick as yours in a lesson, and refined each time you confirm
+    your voice again. When matching a new lesson, every voice in it is compared with your voiceprint; only the
+    similarity scores are kept, never anything computed from other people's voices.</p>
+    <p><strong>Who can access it.</strong> Only Lomb's own software. It is not sold, leased, traded or otherwise
+    profited from, and not disclosed to anyone except Google Cloud, which hosts it, or where required by law.</p>
+    <p><strong>Retention and destruction schedule.</strong> Your voiceprint is permanently destroyed at the
+    earliest of:</p>
+    <ul>
+      <li>when you turn voice recognition off (withdraw consent),</li>
+      <li>when you delete your account,</li>
+      <li>one year after it was last used to recognize you,</li>
+    </ul>
+    <p>and in any case no later than three years after your last interaction with Lomb.</p>
+    <p><strong>Consent.</strong> Voice recognition is off unless you turn it on by signing a written release (typing
+    your name). Lomb works fully without it.</p>
+  </div>
+
+  <h2>Your choices</h2>
+  <ul>
+    <li>Delete any lesson, or your whole account, from the app at any time.</li>
+    <li>Turn voice recognition off at any time; your voiceprint is deleted immediately.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Questions or requests: {{CONTACT}}.</p>
+</main>
+</body>
+</html>

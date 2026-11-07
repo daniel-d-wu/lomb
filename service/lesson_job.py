@@ -20,9 +20,13 @@ Order matches the product, not the old test script: the session exists the
 moment the audio is uploaded, so the UI can show "processing" while the GPU
 works. Any exception marks the session 'failed' and is re-raised.
 
+    enroll_voice()         with biometric consent: the picked voice -> voiceprint
+    delete_lesson() / delete_account()   rows and files
+
 An analysis's rows are written in one transaction (D4), on SQLite locally
-or Cloud SQL Postgres in production. Not here yet (later steps): Cloud
-Storage, users/consent, rate limits.
+or Cloud SQL Postgres in production. A voice is only matched or stored
+with the user's biometric consent active (schema v1.6); without it, every
+lesson asks "which one is you?" and no one's voice is analysed.
 """
 
 import hashlib
@@ -48,6 +52,9 @@ from transcript_processing.whisperx_adapter import (
 )
 
 log = logging.getLogger("lomb.lesson_job")
+
+# A user's voice is only matched or stored with this consent active (v1.6).
+BIOMETRIC_CONSENT = "biometric_enrollment"
 
 
 def new_id(prefix: str) -> str:
@@ -142,23 +149,68 @@ def submit_lesson(deps: LessonDeps, *, audio_path: str | Path, user_id: str | No
 
 
 def register_upload(deps: LessonDeps, *, storage_uri: str, user_id: str | None,
-                    source: str = "public_demo") -> str:
+                    source: str = "public_demo", max_seconds: float | None = None) -> str:
     """Upload step when the audio is already in the BlobStore -- production:
     the browser sends it straight to Cloud Storage, since a lesson is too big
-    to pass through the web API. Downloads it once to measure it, then creates
-    the session ('processing') and audio_assets rows together."""
+    to pass through the web API. Measures it, moves it from the uploads area
+    to audio/<session>/ (anything left in uploads/ is abandoned and expires),
+    then creates the session ('processing') and audio_assets rows together.
+    A file that isn't audio or is longer than max_seconds is deleted and
+    refused (ValueError)."""
     session_id, audio_id = deps.ids("sess"), deps.ids("audio")
     suffix = Path(storage_uri).suffix.lower()
     with tempfile.TemporaryDirectory() as tmp:
         local = deps.blobs.fetch(storage_uri, Path(tmp) / f"audio{suffix}")
         duration, size, digest = probe_duration_seconds(local), local.stat().st_size, sha256_of(local)
-    if duration <= 0:
-        raise ValueError("not a readable audio file")
+    if duration <= 0 or (max_seconds is not None and duration > max_seconds):
+        deps.blobs.delete(storage_uri)
+        if duration <= 0:
+            raise ValueError("that file doesn't look like audio")
+        raise ValueError(f"lessons can be up to {max_seconds / 60:.0f} minutes; this one is {duration / 60:.0f}")
+    uri = deps.blobs.move(storage_uri, f"audio/{session_id}/{audio_id}{suffix}")
     with deps.repo.transaction():
         deps.repo.create_session(session_id, source=source, user_id=user_id, status="processing")
-        deps.repo.create_audio_asset(audio_id, session_id, storage_uri=storage_uri, format=suffix.lstrip("."),
+        deps.repo.create_audio_asset(audio_id, session_id, storage_uri=uri, format=suffix.lstrip("."),
                                      duration_seconds=duration, size_bytes=size, sha256=digest)
     return session_id
+
+
+def delete_lesson(deps: LessonDeps, session_id: str) -> None:
+    """Every row of a lesson, then its files (audio, transcript, Report 2)."""
+    for uri in deps.repo.delete_session(session_id):
+        deps.blobs.delete(uri)
+
+
+def delete_account(deps: LessonDeps, user_id: str) -> None:
+    """The user's lessons and files, voiceprint, consent records and account row."""
+    for uri in deps.repo.delete_user(user_id):
+        deps.blobs.delete(uri)
+
+
+def _has_biometric_consent(deps: LessonDeps, user_id: str | None) -> bool:
+    return user_id is not None and BIOMETRIC_CONSENT in deps.repo.active_consents(user_id)
+
+
+def enroll_voice(deps: LessonDeps, *, session_id: str, user_id: str) -> None:
+    """Add the voice the user picked in this lesson to their voiceprint (the
+    first lesson creates it, later ones reinforce it). Only with biometric
+    consent active, and only the user's own speaker is embedded."""
+    from voice_enrollment.audio_decode import extract_speaker_audio
+    from voice_enrollment.voice_enrollment import SpeakerAudio
+
+    if deps.speaker_service is None or not _has_biometric_consent(deps, user_id):
+        raise PermissionError("no active biometric consent")
+    transcript = deps.repo.latest_transcript(session_id)
+    label = transcript and transcript["target_speaker_label"]
+    if not label:
+        raise ValueError("this lesson has no confirmed speaker yet")
+    with tempfile.TemporaryDirectory() as tmp:
+        raw = deps.blobs.fetch(transcript["raw_json_uri"], Path(tmp) / "transcript.json")
+        turns, _ = _turns(json.loads(raw.read_text(encoding="utf-8")))
+        own = [t for t in turns if t.speaker_id == label]
+        waveform = extract_speaker_audio(str(_fetch_audio(deps, session_id, Path(tmp))), own)[label]
+    deps.speaker_service.enroll(user_id, SpeakerAudio(label, waveform))
+    log.info("voiceprint updated for %s from %s", user_id, session_id)
 
 
 def speaker_choices(deps: LessonDeps, session_id: str) -> list[dict]:
@@ -235,7 +287,10 @@ def _resolve_speaker(deps: LessonDeps, session_id: str, user_id: str | None, aud
 
     resolution_id = deps.ids("resolution")
     labels = sorted({t.speaker_id for t in turns})
-    if deps.speaker_service is None or user_id is None:
+    voiceprints = getattr(deps.speaker_service, "repository", None)
+    if (deps.speaker_service is None or not _has_biometric_consent(deps, user_id)
+            or (voiceprints is not None and voiceprints.get(user_id) is None)):
+        # No consent or no voiceprint: ask the user, and analyse nobody's voice.
         ranked, reason, label, match_t, margin_t = [(lbl, 0.0) for lbl in labels], "no_enrolled_voiceprint", None, None, None
     else:
         waveforms = extract_speaker_audio(str(audio), turns)
@@ -244,6 +299,8 @@ def _resolve_speaker(deps: LessonDeps, session_id: str, user_id: str | None, aud
         reason = res.reason
         label = None if res.needs_manual_confirmation else res.resolved_speaker_label
         match_t, margin_t = deps.speaker_service.match_threshold, deps.speaker_service.margin_threshold
+        if hasattr(voiceprints, "touch"):
+            voiceprints.touch(user_id)  # "last used", for the destroy-after-a-year-unused rule
     deps.repo.create_speaker_resolution(
         resolution_id, session_id, user_id=user_id, resolved_speaker_label=label, reason=reason,
         outcome="auto_resolved" if label else "flagged", match_threshold=match_t, margin_threshold=margin_t,
@@ -273,6 +330,12 @@ def resume_with_speaker(deps: LessonDeps, *, session_id: str, speaker_label: str
                              target_speaker=speaker_label)
         out.resolution_id = resolutions[-1]["resolution_id"] if resolutions else None
         out.guardrail_dropped = dropped
+        user_id = deps.repo.get_session(session_id)["user_id"]
+        if deps.speaker_service is not None and _has_biometric_consent(deps, user_id):
+            try:  # a confirmed pick reinforces an existing voiceprint; never fails the lesson
+                enroll_voice(deps, session_id=session_id, user_id=user_id)
+            except Exception:
+                log.exception("voiceprint update failed for %s", session_id)
         return out
     except Exception:
         deps.repo.update_session(session_id, status="failed")

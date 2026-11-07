@@ -8,9 +8,13 @@ Not public: Cloud Run requires an identity token from a caller allowed to
 invoke it (Cloud Tasks from the web API, step 5; Dan's account for tests).
 
   POST /process  {session_id, user_id?, num_speakers?}
-       transcribe -> speaker picker pause (no voiceprints in the cloud yet)
+       transcribe -> voiceprint match (with biometric consent) or the
+       speaker picker pause -> analyse -> reports
   POST /resume   {session_id, speaker_label}
-       record the pick -> analyse -> reports
+       record the pick -> analyse -> reports (+ reinforce the voiceprint)
+  POST /enroll   {session_id, user_id}
+       right after biometric consent: the voice picked in that lesson
+       becomes the user's voiceprint
   GET  /health
 
 Both POSTs answer when the work is done. A failure marks the session
@@ -31,7 +35,7 @@ from fastapi import FastAPI, HTTPException  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
 from service.cloud import cloud_deps  # noqa: E402
-from service.lesson_job import LessonResult, process_lesson, resume_with_speaker  # noqa: E402
+from service.lesson_job import LessonResult, enroll_voice, process_lesson, resume_with_speaker  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 log = logging.getLogger("lomb.worker")
@@ -60,6 +64,11 @@ class ResumeRequest(BaseModel):
     speaker_label: str
 
 
+class EnrollRequest(BaseModel):
+    session_id: str
+    user_id: str
+
+
 def _summary(out: LessonResult) -> dict:
     return {"session_id": out.session_id, "status": out.status, "transcript_id": out.transcript_id,
             "run_id": out.run_id, "candidates": out.candidates,
@@ -85,6 +94,17 @@ def resume(req: ResumeRequest):
     except Exception as e:
         raise HTTPException(500, f"lesson {req.session_id} failed: {type(e).__name__}: {e}")
     return _summary(out)
+
+
+@app.post("/enroll")
+def enroll(req: EnrollRequest):
+    try:
+        enroll_voice(state["deps"], session_id=req.session_id, user_id=req.user_id)
+    except PermissionError as e:  # consent withdrawn before the task ran: nothing to do, don't retry
+        return {"enrolled": False, "reason": str(e)}
+    except Exception as e:
+        raise HTTPException(500, f"enrollment from {req.session_id} failed: {type(e).__name__}: {e}")
+    return {"enrolled": True}
 
 
 @app.get("/health")  # not /healthz: Cloud Run reserves paths ending in "z"
